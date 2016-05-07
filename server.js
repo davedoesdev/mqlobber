@@ -62,7 +62,9 @@ var EventEmitter = require('events').EventEmitter,
     BPMux = require('bpmux').BPMux,
     frame = require('frame-stream'),
     FastestWritable = require('fastest-writable').FastestWritable,
-    util = require('util');
+    util = require('util'),
+    TYPE_SUBSCRIBE = 0,
+    TYPE_UNSUBSCRIBE = 1;
 
 function MQlobber(fsq, stream, options)
 {
@@ -77,20 +79,88 @@ function MQlobber(fsq, stream, options)
 
     var ths = this;
 
-    this._mux.once('handshake', function (duplex, client_data, delay)
+    this._mux.on('error', function (err)
     {
-        ths._control = duplex;
-        ths.emit('handshake', client_data);
-        if (options.handshake_data !== undefined)
-        {
-            delay()(options.handshake_data);
-        }
+        ths.emit('error', err);
+    });
 
-        // register for more handshake events (publish)
-        // read from control for sub/unsub
-        //   - frame-stream
+    this._mux.once('handshake', function (duplex, hdata, delay)
+    {
+        ths._control = frame.decode(options);
+        duplux.pipe(this._control);
+
+        ths._control.on('readable', function ()
+        {
+            var data = this.read();
+
+            if (data.length === 0)
+            {
+                return ths.emit('error', new Error('empty buffer'));
+            }
+
+            var type = buf.readUInt8(0, true);
+
+            switch (type)
+            {
+                case TYPE_SUBSCRIBE:
+                    var topic = buf.toString('utf8', 1);
+                    if (!ths.emit('subscribe_requested', topic))
+                    {
+                        ths.subscribe(topic);
+                    }
+                    break;
+
+                case TYPE_UNSUBSCRIBE:
+                    var topic = buf.toString('utf8', 1);
+                    if (!ths.emit('unsubscribe_requested', topic))
+                    {
+                        ths.unsubscribe(topic);
+                    }
+                    break;
+
+                default:
+                    ths.emit('error', new Error('unknown type:' + type)
+                    break;
+            }
+        });
+
+        this.on('handshake', function (duplex, hdata)
+        {
+            if (hdata.length === 0)
+            {
+                return ths.emit('error', new Error('empty buffer'));
+            }
+
+            var options = { single: hdata.readUInt8(0, true) },
+                topic = hdata.toString('utf8', 1);
+
+            if (!ths.emit('publish_requested', topic, duplex, options))
+            {
+                duplex.pipe(ths.publish(topic, options));
+            }
+        });
+
+        ths.emit('handshake', hdata, delay);
     });
 }
 
 util.inherits(MQlobber, EventEmitter);
 
+MQlobber.prototype.subscribe = function (topic, cb)
+{
+
+};
+
+MQlobber.prototype.unsubscribe = function (topic, cb)
+{
+
+};
+
+MQlobber.prototype.publish = function (topic, payload, options)
+{
+
+};
+
+// have a single handler for messages
+// re-emit error on fastest-writable
+// filter function
