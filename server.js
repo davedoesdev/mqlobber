@@ -18,6 +18,7 @@ So take:
     - handshake data for the control channel (e.g. up to caller if knows single
       is disabled to send that info if the client can deal with it)
     - whether to use fastest-writable
+    - options for bpmux, frame-stream, fastest-writable
 
 Exposes:
 
@@ -55,5 +56,41 @@ Misc:
     - But the filter handler is passed when the fsq is constructed.
       This is optional behaviour, expose a filter function which caller
       can use when constructing fsq
-
 */
+
+var EventEmitter = require('events').EventEmitter,
+    BPMux = require('bpmux').BPMux,
+    frame = require('frame-stream'),
+    FastestWritable = require('fastest-writable').FastestWritable,
+    util = require('util');
+
+function MQlobber(fsq, stream, options)
+{
+    EventEmitter.call(this);
+
+    options = options || {};
+
+    this._fsq = fsq;
+    this._mux = new BPMux(stream, options);
+    this._subs = new Set();
+    this._fastest_writable = options.fastest_writable;
+
+    var ths = this;
+
+    this._mux.once('handshake', function (duplex, client_data, delay)
+    {
+        ths._control = duplex;
+        ths.emit('handshake', client_data);
+        if (options.handshake_data !== undefined)
+        {
+            delay()(options.handshake_data);
+        }
+
+        // register for more handshake events (publish)
+        // read from control for sub/unsub
+        //   - frame-stream
+    });
+}
+
+util.inherits(MQlobber, EventEmitter);
+
