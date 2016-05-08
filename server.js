@@ -76,6 +76,7 @@ function MQlobber(fsq, stream, options)
     this._mux = new BPMux(stream, options);
     this._subs = new Set();
     this._fastest_writable = options.fastest_writable;
+    this._done = false;
 
     var ths = this;
 
@@ -83,6 +84,36 @@ function MQlobber(fsq, stream, options)
     {
         ths.emit('error', err);
     });
+
+    function done()
+    {
+        ths.unsubscribe();
+        ths._done = true;
+    }
+
+    stream.on('end', done);
+    stream.on('finish', done);
+
+    this._handler = function (data, info, cb)
+    {
+        var hdata = new Buffer(
+        single
+        expires
+        topic
+
+        ths._mux.multiplex({ handshake_data: hdata }, function (err, duplex)
+        {
+            if (err)
+            {
+                return ths.emit('error', err);
+            }
+
+            data.on('end', cb);
+            data.pipe(duplex);
+        });
+    };
+
+    this._handler.accept_stream = true;
 
     this._mux.once('handshake', function (duplex, hdata, delay)
     {
@@ -146,19 +177,34 @@ function MQlobber(fsq, stream, options)
 
 util.inherits(MQlobber, EventEmitter);
 
-MQlobber.prototype.subscribe = function (topic, cb)
+MQlobber.prototype.subscribe = function (topic)
 {
-
+    if (!this._done && !this._subs.has(topic))
+    {
+        this._fsq.subscribe(topic, this._handler);
+        this._subs.add(topic);
+    }
 };
 
-MQlobber.prototype.unsubscribe = function (topic, cb)
+MQlobber.prototype.unsubscribe = function (topic)
 {
-
+    if (topic === undefined)
+    {
+        for (var topic of this._subs)
+        {
+            this._fsq.unsubscribe(topic, this._handler);
+        }
+        this._subs.clear();
+    }
+    else if (this._subs.has(topic))
+    {
+        this._fsq.unsubscribe(topic, this._handler);
+    }
 };
 
 MQlobber.prototype.publish = function (topic, payload, options)
 {
-
+    return this._fsq.publish(topic, payload, options);
 };
 
 // have a single handler for messages
