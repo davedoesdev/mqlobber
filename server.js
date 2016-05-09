@@ -73,17 +73,18 @@ function MQlobber(fsq, stream, options)
     options = options || {};
 
     this._fsq = fsq;
-    this._mux = new BPMux(stream, options);
     this._subs = new Set();
-    this._fastest_writable = options.fastest_writable;
     this._done = false;
 
-    var ths = this;
+    var ths = this,
+        mux = new BPMux(stream, options);
 
-    this._mux.on('error', function (err)
+    function error(err)
     {
-        ths.emit('error', err);
-    });
+        ths.emit('error', err, this);
+    };
+
+    mux.on('error', error);
 
     function done()
     {
@@ -96,28 +97,49 @@ function MQlobber(fsq, stream, options)
 
     this._handler = function (data, info, cb)
     {
-        var hdata = new Buffer(
-        single
-        expires
-        topic
+        data.on('error', error);
 
-        ths._mux.multiplex({ handshake_data: hdata }, function (err, duplex)
+        var hdata = Buffer.concat([new Buffer([info.single ? 1 : 0]),
+                                   new Buffer(info.topic, 'utf8')]);
+
+        mux.multiplex({ handshake_data: hdata }, function (err, duplex)
         {
             if (err)
             {
-                return ths.emit('error', err);
+                return error.call(ths, err);
             }
 
+            duplex.on('error', error);
             data.on('end', cb);
-            data.pipe(duplex);
+
+            if (options.fastest_writable)
+            {
+                if (!data._mqlobber_fastest_writable)
+                {
+                    data._mqlobber_fastest_writable = new FastestWritable();
+                    data._mqlobber_fastest_writable.on('error', error);
+                    data.pipe(data._mqlobber_fastest_writable);
+                }
+
+                data._mqlobber_fastest_writable.add_peer(duplex);
+            }
+            else
+            {
+                data.pipe(duplex);
+            }
         });
     };
 
     this._handler.accept_stream = true;
+    this._handler._mqlobber_stream = stream;
 
-    this._mux.once('handshake', function (duplex, hdata, delay)
+    mux.once('handshake', function (duplex, hdata, delay)
     {
+        duplex.on('error', error);
+
         ths._control = frame.decode(options);
+        ths._control.on('error', error);
+
         duplux.pipe(this._control);
 
         ths._control.on('readable', function ()
@@ -126,7 +148,7 @@ function MQlobber(fsq, stream, options)
 
             if (data.length === 0)
             {
-                return ths.emit('error', new Error('empty buffer'));
+                return error.call(duplex, new Error('empty buffer'));
             }
 
             var type = buf.readUInt8(0, true);
@@ -150,7 +172,7 @@ function MQlobber(fsq, stream, options)
                     break;
 
                 default:
-                    ths.emit('error', new Error('unknown type:' + type)
+                    error.call(duplex, new Error('unknown type:' + type));
                     break;
             }
         });
@@ -159,10 +181,10 @@ function MQlobber(fsq, stream, options)
         {
             if (hdata.length === 0)
             {
-                return ths.emit('error', new Error('empty buffer'));
+                return error.call(duplex, new Error('empty buffer'));
             }
 
-            var options = { single: hdata.readUInt8(0, true) },
+            var options = { single: !!hdata.readUInt8(0, true) },
                 topic = hdata.toString('utf8', 1);
 
             if (!ths.emit('publish_requested', topic, duplex, options))
@@ -207,6 +229,15 @@ MQlobber.prototype.publish = function (topic, payload, options)
     return this._fsq.publish(topic, payload, options);
 };
 
-// have a single handler for messages
-// re-emit error on fastest-writable
-// filter function
+MQlobber.filter_all_drained = function (info, handlers, cb)
+{
+    for (var h of handlers)
+    {
+        if (h._mqlobber_stream && !h._mqlobber_stream.write(''))
+        {
+            return cb(null, false);
+        }
+    }
+
+    cb(null, true, handlers);
+};
