@@ -15,8 +15,6 @@ So take:
   messages multiple times
 - stream
 - options:
-    - handshake data for the control channel (e.g. up to caller if knows single
-      is disabled to send that info if the client can deal with it)
     - whether to use fastest-writable
     - options for bpmux, frame-stream, fastest-writable
 
@@ -66,7 +64,7 @@ var EventEmitter = require('events').EventEmitter,
     TYPE_SUBSCRIBE = 0,
     TYPE_UNSUBSCRIBE = 1;
 
-function MQlobber(fsq, stream, options)
+function MQlobberServer(fsq, stream, options)
 {
     EventEmitter.call(this);
 
@@ -137,10 +135,10 @@ function MQlobber(fsq, stream, options)
     {
         duplex.on('error', error);
 
-        ths._control = frame.decode(options);
-        ths._control.on('error', error);
+        var control = frame.decode(options);
+        control.on('error', error);
 
-        duplux.pipe(this._control);
+        duplex.pipe(control);
 
         ths._control.on('readable', function ()
         {
@@ -197,9 +195,9 @@ function MQlobber(fsq, stream, options)
     });
 }
 
-util.inherits(MQlobber, EventEmitter);
+util.inherits(MQlobberServer, EventEmitter);
 
-MQlobber.prototype.subscribe = function (topic)
+MQlobberServer.prototype.subscribe = function (topic)
 {
     if (!this._done && !this._subs.has(topic))
     {
@@ -208,7 +206,7 @@ MQlobber.prototype.subscribe = function (topic)
     }
 };
 
-MQlobber.prototype.unsubscribe = function (topic)
+MQlobberServer.prototype.unsubscribe = function (topic)
 {
     if (topic === undefined)
     {
@@ -224,12 +222,12 @@ MQlobber.prototype.unsubscribe = function (topic)
     }
 };
 
-MQlobber.prototype.publish = function (topic, payload, options)
+MQlobberServer.prototype.publish = function (topic, payload, options)
 {
     return this._fsq.publish(topic, payload, options);
 };
 
-MQlobber.filter_all_drained = function (info, handlers, cb)
+MQlobberServer.filter_all_drained = function (info, handlers, cb)
 {
     for (var h of handlers)
     {
