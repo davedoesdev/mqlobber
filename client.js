@@ -52,17 +52,22 @@ function MQlobberClient(stream, options)
         ths.emit('error', err, this);
     }
 
+    function warning(err)
+    {
+        if (!ths.emit('warning', err, this))
+        {
+            console.error(err);
+        }
+    }
+    this._warning = warning; // for publish
+
     this._mux.on('error', error);
 
-    function done()
+    stream.on('finish', function ()
     {
         ths._subs.clear();
-        ths._matcher.clear();
         ths._done = true;
-    }
-
-    stream.on('end', done);
-    stream.on('finish', done);
+    });
 
     this._mux.multiplex({ handshake_data: options.handshake_data },
     function (err, duplex)
@@ -72,24 +77,34 @@ function MQlobberClient(stream, options)
             return error.call(ths, err);
         }
 
+        // mux emits error events on all duplexes if they have a listener
+        // so listen for errors on the control duplex instead of mux now
+        this._mux.removeEventListener('error', error);
         duplex.on('error', error);
 
         ths._control = frame.encode(options);
         ths._control.on('error', error);
         ths._control.pipe(duplex);
 
-        this._mux.on('handshake', function (dplex, hdata)
+        this._mux.on('handshake', function (dplex, hdata, delay)
         {
             if (dplex === duplex)
             {
                 return ths.emit('handshake', hdata);
             }
 
-            dplex.on('error', error);
+            if (!delay)
+            {
+                // duplex was initiated by us (outgoing message)
+                return;
+            }
+
+            dplex.on('error', warning);
+            dplex.end(); // only read from incoming message duplex
 
             if (hdata.length === 0)
             {
-                return error.call(dplex, new Error('empty buffer'));
+                return warning.call(dplex, new Error('empty buffer'));
             }
 
             var info = {
@@ -107,27 +122,48 @@ function MQlobberClient(stream, options)
 
 util.inherits(MQlobberClient, EventEmitter);
 
-MQlobberClient.prototype.subscribe = function (topic, handler)
+MQlobberClient.prototype.subscribe = function (topic, handler, cb)
 {
-    if (!this._done)
+    if (this._done)
     {
-        var handlers = this._subs.get(topic);
-
-        if (!handlers)
-        {
-            handlers = new Set();
-            this._control.write(Buffer.concat([new Buffer([TYPE_SUBSCRIBE]),
-                                               new Buffer(topic, 'utf8')]));
-            this._subs.set(topic, handlers);
-        }
-
-        handlers.add(handler);
-        this._matcher.add(topic, handler);
+        return cb(new Error('finished'));
     }
+
+    var handlers = this._subs.get(topic);
+
+    if (!handlers)
+    {
+        handlers = new Set();
+        this._control.write(Buffer.concat([new Buffer([TYPE_SUBSCRIBE]),
+                                           new Buffer(topic, 'utf8')]));
+        this._subs.set(topic, handlers);
+    }
+
+    handlers.add(handler);
+    this._matcher.add(topic, handler);
+
+    cb();
 };
 
-MQlobberClient.prototype.unsubscribe = function (topic, handler)
+MQlobberClient.prototype.unsubscribe = function (topic, handler, cb)
 {
+    if (cb === undefined)
+    {
+        cb = handler;
+        handler = undefined;
+    }
+
+    if (cb === undefined)
+    {
+        cb = topic;
+        topic = undefined;
+    }
+
+    if (this._done)
+    {
+        return cb(new Error('finished'));
+    }
+
     if (topic === undefined)
     {
         for (var t of this._subs.keys())
@@ -166,6 +202,8 @@ MQlobberClient.prototype.unsubscribe = function (topic, handler)
 
         this._matcher.remove(topic, handler);
     }
+
+    cb();
 };
 
 MQlobberClient.prototype.publish = function (topic, options, cb)
@@ -176,11 +214,25 @@ MQlobberClient.prototype.publish = function (topic, options, cb)
         options = undefined;
     }
 
+    if (this._done)
+    {
+        return cb(new Error('finished'));
+    }
+
     options = options || {};
 
     var hdata = Buffer.concat([new Buffer([options.single ? 1 : 0]),
-                               new Buffer(topic, 'utf8')]);
+                               new Buffer(topic, 'utf8')]),
+        warning = this._warning;
 
-    this._mux.multiplex({ handshake_data: hdata }, cb);
+    this._mux.multiplex({ handshake_data: hdata }, function (err, duplex)
+    {
+        if (duplex)
+        {
+            duplex.on('error', warning);
+        }
+
+        cb(err, duplex);
+    });
 };
 

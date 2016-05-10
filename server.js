@@ -70,7 +70,7 @@ function MQlobberServer(fsq, stream, options)
 
     options = options || {};
 
-    this._fsq = fsq;
+    this.fsq = fsq;
     this._subs = new Set();
     this._done = false;
 
@@ -82,20 +82,25 @@ function MQlobberServer(fsq, stream, options)
         ths.emit('error', err, this);
     };
 
+    function warning(err)
+    {
+        if (!ths.emit('warning', err, this))
+        {
+            console.error(err);
+        }
+    }
+
     mux.on('error', error);
 
-    function done()
+    stream.on('finish', function ()
     {
         ths.unsubscribe();
         ths._done = true;
-    }
-
-    stream.on('end', done);
-    stream.on('finish', done);
+    });
 
     this._handler = function (data, info, cb)
     {
-        data.on('error', error);
+        data.on('error', warning);
 
         var hdata = Buffer.concat([new Buffer([info.single ? 1 : 0]),
                                    new Buffer(info.topic, 'utf8')]);
@@ -107,7 +112,7 @@ function MQlobberServer(fsq, stream, options)
                 return error.call(ths, err);
             }
 
-            duplex.on('error', error);
+            duplex.on('error', warning);
             data.on('end', cb);
 
             if (options.fastest_writable)
@@ -115,7 +120,7 @@ function MQlobberServer(fsq, stream, options)
                 if (!data._mqlobber_fastest_writable)
                 {
                     data._mqlobber_fastest_writable = new FastestWritable();
-                    data._mqlobber_fastest_writable.on('error', error);
+                    data._mqlobber_fastest_writable.on('error', warning);
                     data.pipe(data._mqlobber_fastest_writable);
                 }
 
@@ -133,12 +138,16 @@ function MQlobberServer(fsq, stream, options)
 
     mux.once('handshake', function (duplex, hdata, delay)
     {
+        // mux emits error events on all duplexes if they have a listener
+        // so listen for errors on the control duplex instead of mux now
+        mux.removeEventListener('error', error);
         duplex.on('error', error);
 
         var control = frame.decode(options);
         control.on('error', error);
 
         duplex.pipe(control);
+        duplex.end(); // only read from control duplex
 
         ths._control.on('readable', function ()
         {
@@ -146,7 +155,7 @@ function MQlobberServer(fsq, stream, options)
 
             if (data.length === 0)
             {
-                return error.call(duplex, new Error('empty buffer'));
+                return error.call(ths._control, new Error('empty buffer'));
             }
 
             var type = buf.readUInt8(0, true);
@@ -170,18 +179,25 @@ function MQlobberServer(fsq, stream, options)
                     break;
 
                 default:
-                    error.call(duplex, new Error('unknown type:' + type));
+                    error.call(ths._control, new Error('unknown type:' + type));
                     break;
             }
         });
 
-        this.on('handshake', function (duplex, hdata)
+        this.on('handshake', function (duplex, hdata, delay)
         {
-            duplex.on('error', error);
+            if (!delay)
+            {
+                // duplex was initiated by us (outgoing message)
+                return;
+            }
+
+            duplex.on('error', warning);
+            duplex.end(); // only read from incoming message duplex
 
             if (hdata.length === 0)
             {
-                return error.call(duplex, new Error('empty buffer'));
+                return warning.call(duplex, new Error('empty buffer'));
             }
 
             var options = { single: !!hdata.readUInt8(0, true) },
@@ -189,7 +205,7 @@ function MQlobberServer(fsq, stream, options)
 
             if (!ths.emit('publish_requested', topic, duplex, options))
             {
-                duplex.pipe(ths.publish(topic, options));
+                duplex.pipe(ths.fsq.publish(topic, options));
             }
         });
 
@@ -203,7 +219,7 @@ MQlobberServer.prototype.subscribe = function (topic)
 {
     if (!this._done && !this._subs.has(topic))
     {
-        this._fsq.subscribe(topic, this._handler);
+        this.fsq.subscribe(topic, this._handler);
         this._subs.add(topic);
     }
 };
@@ -214,19 +230,15 @@ MQlobberServer.prototype.unsubscribe = function (topic)
     {
         for (var topic of this._subs)
         {
-            this._fsq.unsubscribe(topic, this._handler);
+            this.fsq.unsubscribe(topic, this._handler);
         }
         this._subs.clear();
     }
     else if (this._subs.has(topic))
     {
-        this._fsq.unsubscribe(topic, this._handler);
+        this.fsq.unsubscribe(topic, this._handler);
+        this._subs.delete(topic);
     }
-};
-
-MQlobberServer.prototype.publish = function (topic, payload, options)
-{
-    return this._fsq.publish(topic, payload, options);
 };
 
 MQlobberServer.filter_all_drained = function (info, handlers, cb)
