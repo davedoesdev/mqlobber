@@ -177,6 +177,8 @@ function MQlobberServer(fsq, stream, options)
 
         this.on('handshake', function (duplex, hdata)
         {
+            duplex.on('error', error);
+
             if (hdata.length === 0)
             {
                 return error.call(duplex, new Error('empty buffer'));

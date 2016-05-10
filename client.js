@@ -74,16 +74,34 @@ function MQlobberClient(stream, options)
 
         duplex.on('error', error);
 
-        duplex.on('handshake', function (hdata)
-        {
-            ths.emit('handshake', hdata);
-        });
-
-        // need to handle published messages from server (handshake)
-
         ths._control = frame.encode(options);
         ths._control.on('error', error);
         ths._control.pipe(duplex);
+
+        this._mux.on('handshake', function (dplex, hdata)
+        {
+            if (dplex === duplex)
+            {
+                return ths.emit('handshake', hdata);
+            }
+
+            dplex.on('error', error);
+
+            if (hdata.length === 0)
+            {
+                return error.call(dplex, new Error('empty buffer'));
+            }
+
+            var info = {
+                single: !!hdata.readUInt8(0, true),
+                topic: hdata.toString('utf8', 1)
+            };
+
+            for (var handler of ths._matcher.match(info.topic))
+            {
+                handler(dplex, info);
+            }
+        });
     });
 }
 
