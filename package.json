@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~0.0.1",
+    "bpmux": "~1.0.0",
     "frame-stream": "~1.1.1",
     "fastest-writable": "~0.0.5",
     "qlobber": "~0.7.0"
