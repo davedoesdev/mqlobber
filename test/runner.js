@@ -7,7 +7,42 @@ var mqlobber = require('..'),
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ;
 
 // start with single stream, do multiple streams later
+//   but perhaps we should have concept of separate streams now
+//   (e.g. for pub and sub) even if we use same stream
+//   maybe test should specify how many streams to make
 // start with single server, do multi-process server later (clustered?)
+
+/*
+test fastest-writable:
+
+mq_server.on('message', function (msg_stream, dest, info)
+{
+    if (!msg_stream.fastest_writable)
+    {
+        msg_stream.fastest_writable = new FastestWritable();
+        msg_stream.pipe(msg_stream.fastest_writable);
+    }
+
+    msg_stream.add_peer(dest);
+});
+
+test filter_all_drained:
+
+function filter_all_drained(info, handlers, cb)
+{
+    for (var h of handlers)
+    {
+        if (h.mqlobber_stream &&
+            (h.mqlobber_stream._writableState.length >=
+             h.mqlobber_stream._writableState.highWaterMark))
+        {
+            return cb(null, false);
+        }
+    }
+
+    cb(null, true, handlers);
+}
+*/
 
 module.exports = function (description, connect, accept)
 {
