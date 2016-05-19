@@ -10,6 +10,10 @@ function RightDuplex(left)
 {
     Duplex.call(this);
     this.left = left;
+    this.on('finish', function ()
+    {
+        left.push(null);
+    });
 }
 
 util.inherits(RightDuplex, Duplex);
@@ -39,6 +43,10 @@ function LeftDuplex()
 {
     Duplex.call(this);
     this.right = new RightDuplex(this);
+    this.on('finish', function ()
+    {
+        this.right.push(null);
+    }.bind(this));
 }
 
 util.inherits(LeftDuplex, Duplex);

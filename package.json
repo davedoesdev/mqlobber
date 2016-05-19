@@ -49,7 +49,8 @@
     "istanbul": "~0.4.3",
     "coveralls": "~2.11.9",
     "b": "git://github.com/davedoesdev/b.git",
-    "qlobber-fsq": "2.0.0"
+    "qlobber-fsq": "2.0.0",
+    "async": "~1.5.2"
   },
   "engines": {
     "node": ">=0.12"

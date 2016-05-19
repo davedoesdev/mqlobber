@@ -1,7 +1,8 @@
 /*jshint mocha: true */
 "use strict";
 
-var mqlobber = require('..'),
+var async = require('async'),
+    mqlobber = require('..'),
     MQlobberClient = mqlobber.MQlobberClient,
     MQlobberServer = mqlobber.MQlobberServer,
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ;
@@ -11,6 +12,91 @@ var mqlobber = require('..'),
 //   (e.g. for pub and sub) even if we use same stream
 //   maybe test should specify how many streams to make
 // start with single server, do multi-process server later (clustered?)
+
+module.exports = function (description, connect, accept)
+{
+    function with_mqs(n, description, f)
+    {
+        describe('mqs=' + n, function ()
+        {
+            var fsq, mqs;
+
+            before(function (cb)
+            {
+                fsq = new QlobberFSQ();
+                fsq.on('start', function ()
+                {
+                    async.times(n, function (i, cb)
+                    {
+                        connect(function (cs)
+                        {
+                            accept(cs, function (ss)
+                            {
+                                var cmq = new MQlobberClient(cs),
+                                    smq = new MQlobberServer(fsq, ss);
+
+                                cmq.on('handshake', function ()
+                                {
+                                    cb(null, {
+                                        client: cmq,
+                                        server: smq,
+                                        client_stream: cs,
+                                        server_stream: ss
+                                    });
+                                });
+                            });
+                        });
+                    }, function (err, v)
+                    {
+                        mqs = v;
+                        cb(err);
+                    });
+                });
+            });
+
+            after(function (cb)
+            {
+                async.each(mqs, function (mq, cb)
+                {
+                    mq.client_stream.on('end', cb);
+                    mq.server_stream.on('end', function ()
+                    {
+                        this.end();
+                    });
+                    mq.client_stream.end();
+                }, function (err)
+                {
+                    fsq.stop_watching(function ()
+                    {
+                        cb(err);
+                    });
+                });
+            });
+
+            it(description, function (cb)
+            {
+                f(mqs, cb);
+            });
+        });
+    }
+
+    with_mqs(1, 'should publish and receive a message on single stream',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            cb();
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err, s)
+            {
+                if (err) { return cb(err); }
+                s.end('bar');
+            });
+        });
+    });
+};
 
 /*
 test fastest-writable:
@@ -43,65 +129,3 @@ function filter_all_drained(info, handlers, cb)
     cb(null, true, handlers);
 }
 */
-
-module.exports = function (description, connect, accept)
-{
-    describe(description, function ()
-    {
-        var client_stream,
-            server_stream,
-            fsq,
-            mq_client,
-            mq_server;
-
-        before(function (cb)
-        {
-            connect(function (cs)
-            {
-                client_stream = cs;
-                accept(cs, function (ss)
-                {
-                    server_stream = ss;
-                    cb();
-                });
-            });
-        });
-
-        after(function (cb)
-        {
-            client_stream.on('end', cb);
-            client_stream.end();
-            fsq.stop_watching(cb);
-        });
-
-        before(function (cb)
-        {
-            mq_client = new MQlobberClient(client_stream);
-            mq_client.on('handshake', function ()
-            {
-                cb();
-            });
-            fsq = new QlobberFSQ();
-            fsq.on('start', function ()
-            {
-                mq_server = new MQlobberServer(fsq, server_stream);
-            });
-        });
-
-        it('should publish and receive a message', function (cb)
-        {
-            mq_client.subscribe('foo', function (s, info)
-            {
-                cb();
-            }, function (err)
-            {
-                if (err) { return cb(err); }
-                mq_client.publish('foo', function (err, s)
-                {
-                    if (err) { return cb(err); }
-                    s.end('bar');
-                });
-            });
-        });
-    });
-};
