@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~1.0.0",
+    "bpmux": "~1.0.2",
     "frame-stream": "~1.1.1",
     "qlobber": "~0.7.0"
   },
@@ -49,7 +49,7 @@
     "istanbul": "~0.4.3",
     "coveralls": "~2.11.9",
     "b": "git://github.com/davedoesdev/b.git",
-    "qlobber-fsq": "2.0.0",
+    "qlobber-fsq": "3.0.1",
     "async": "~1.5.2"
   },
   "engines": {

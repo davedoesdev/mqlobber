@@ -1,0 +1,839 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for mqlobber/lib/server.js</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class='wrapper'>
+  <div class='pad1'>
+    <h1>
+      <a href="../../index.html">all files</a> / <a href="index.html">mqlobber/lib/</a> server.js
+    </h1>
+    <div class='clearfix'>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">83.52% </span>
+        <span class="quiet">Statements</span>
+        <span class='fraction'>76/91</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">51.16% </span>
+        <span class="quiet">Branches</span>
+        <span class='fraction'>22/43</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">81.82% </span>
+        <span class="quiet">Functions</span>
+        <span class='fraction'>9/11</span>
+      </div>
+      <div class='fl pad1y space-right2'>
+        <span class="strong">83.33% </span>
+        <span class="quiet">Lines</span>
+        <span class='fraction'>75/90</span>
+      </div>
+    </div>
+  </div>
+  <div class='status-line high'></div>
+<pre><table class="coverage">
+<tr><td class="line-count quiet">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141
+142
+143
+144
+145
+146
+147
+148
+149
+150
+151
+152
+153
+154
+155
+156
+157
+158
+159
+160
+161
+162
+163
+164
+165
+166
+167
+168
+169
+170
+171
+172
+173
+174
+175
+176
+177
+178
+179
+180
+181
+182
+183
+184
+185
+186
+187
+188
+189
+190
+191
+192
+193
+194
+195
+196
+197
+198
+199
+200
+201
+202
+203
+204
+205
+206
+207
+208
+209
+210
+211
+212
+213
+214
+215
+216
+217
+218
+219
+220
+221
+222
+223
+224
+225
+226
+227
+228
+229
+230
+231
+232
+233
+234
+235
+236
+237
+238
+239
+240
+241
+242
+243
+244
+245
+246
+247
+248
+249
+250
+251
+252
+253
+254
+255
+256
+257
+258
+259</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">735×</span>
+<span class="cline-any cline-yes">735×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">183353×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">178794×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4556×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4556×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4559×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">377×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">358×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/*
+Just supply qlobber-fsq obj and stream. Multiplex (using bpmux) off that.
+No user/auth stuff here.
+&nbsp;
+Messages (published and received) on separate streams. Use handshake data
+to describe the messages.
+&nbsp;
+Subscribe, unsubscribe on a control channel. Use frame-stream
+&nbsp;
+Also allow subscribe, unsubscribe from not in the stream.
+&nbsp;
+So take:
+&nbsp;
+- fsq object; up to caller to specify dedup - without, client may receive
+  messages multiple times
+- stream
+- options for bpmux, frame-stream
+&nbsp;
+Exposes:
+&nbsp;
+- subscribe (doesn't take handler)
+- unsubscribe (doesn't take handler) - no topic means unsubscribe all
+- publish
+- events:
+  - subscribe_requested (if no handler then calls subscribe)
+  - unsubscribe_requested (if no handler then calls unsubscribe)
+  - publish_requested (if no handler then calls publish)
+  - handshake (on control channel only)
+  - message (with message stream, dest stream and message info)
+      - default behaviour is to pipe message stream to dest stream
+      - caller can use fastest-writable or whatever they want
+        (e.g. throttling, timeout, minimum data rate)
+&nbsp;
+Lifecycle:
+&nbsp;
+- Don't replicate lifecycle events of fsq obj or stream
+- Only care about cleaning up our own state. 
+  - On stream end or finish, unsubscribe all
+&nbsp;
+Misc:
+&nbsp;
+- Need to remember all active subscriptions so can remove when unsubscribe all
+  Might as well use this to stop multiple subscriptions for same subject
+  (although fsq dedup also takes care of that)
+*/
+&nbsp;
+"use strict";
+&nbsp;
+var EventEmitter = require('events').EventEmitter,
+    BPMux = require('bpmux').BPMux,
+    frame = require('frame-stream'),
+    util = require('util'),
+    TYPE_SUBSCRIBE = 0,
+    TYPE_UNSUBSCRIBE = 1;
+&nbsp;
+function MQlobberServer(fsq, stream, options)
+{
+    EventEmitter.call(this);
+&nbsp;
+    options = options || <span class="branch-1 cbranch-no" title="branch not covered" >{};</span>
+&nbsp;
+    this._fsq = fsq;
+    this._subs = new Set();
+    this._done = false;
+&nbsp;
+    var ths = this,
+        mux = new BPMux(stream, util._extend(util._extend({}, options),
+        {
+            high_channels: true
+        }));
+        
+<span class="fstat-no" title="function not covered" >    function error(err)</span>
+    {
+        /*jshint validthis: true */
+<span class="cstat-no" title="statement not covered" >        ths.emit('error', err, this);</span>
+    }
+&nbsp;
+<span class="fstat-no" title="function not covered" >    function warning(err)</span>
+    {
+        /*jshint validthis: true */
+<span class="cstat-no" title="statement not covered" >        if (!ths.emit('warning', err, this))</span>
+        {
+<span class="cstat-no" title="statement not covered" >            console.error(err);</span>
+        }
+    }
+&nbsp;
+    mux.on('error', error);
+&nbsp;
+    stream.on('finish', function ()
+    {
+        ths.unsubscribe();
+        ths._done = true;
+    });
+&nbsp;
+    this._handler = function (data, info, cb)
+    {
+        data.on('error', warning);
+&nbsp;
+        var hdata = [new Buffer(1)];
+&nbsp;
+        hdata[0].writeUInt8((options.single ? <span class="branch-0 cbranch-no" title="branch not covered" >1 </span>: 0) |
+                            ((options.send_expires ? 1 : <span class="branch-1 cbranch-no" title="branch not covered" >0)</span> &lt;&lt; 1),
+                            0);
+&nbsp;
+        <span class="missing-if-branch" title="else path not taken" >E</span>if (options.send_expires)
+        {
+            var expires = Math.floor(info.expires / 1000);
+            hdata.push(new Buffer(8));
+            // 32 bits are only enough for dates up to 2106
+            // can't use &gt;&gt; and &amp; because JS converts to 32 bits for bitwise ops
+            hdata[1].writeUInt32BE(Math.floor(expires / Math.pow(2, 32)), 0);
+            hdata[1].writeUInt32BE(expires % Math.pow(2, 32), 4);
+        }
+        
+        hdata.push(new Buffer(info.topic, 'utf8'));
+        
+        mux.multiplex({ handshake_data: Buffer.concat(hdata) },
+        function (err, duplex)
+        {
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (err)
+            {
+<span class="cstat-no" title="statement not covered" >                return error.call(ths, err);</span>
+            }
+&nbsp;
+            duplex.on('error', warning);
+            data.on('end', cb);
+&nbsp;
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (!ths.emit('message', data, duplex, info))
+            {
+                data.pipe(duplex);
+            }
+        });
+    };
+&nbsp;
+    this._handler.accept_stream = true;
+    this._handler.mqlobber_stream = stream;
+&nbsp;
+    mux.once('handshake', function (duplex, hdata, delay)
+    {
+        // mux emits error events on all duplexes if they have a listener
+        // so listen for errors on the control duplex instead of mux now
+        mux.removeListener('error', error);
+        duplex.on('error', error);
+&nbsp;
+        var control = frame.decode(options);
+        control.on('error', error);
+&nbsp;
+        duplex.pipe(control);
+        duplex.end(); // only read from control duplex
+&nbsp;
+        control.on('readable', function ()
+        {
+            var data = this.read();
+            if (data === null) { return; }
+&nbsp;
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (data.length === 0)
+            {
+<span class="cstat-no" title="statement not covered" >                return error.call(control, new Error('empty buffer'));</span>
+            }
+&nbsp;
+            var type = data.readUInt8(0, true), topic;
+&nbsp;
+            switch (type)
+            {
+                case TYPE_SUBSCRIBE:
+                    topic = data.toString('utf8', 1);
+                    <span class="missing-if-branch" title="else path not taken" >E</span>if (!ths.emit('subscribe_requested', topic))
+                    {
+                        ths.subscribe(topic);
+                    }
+                    break;
+&nbsp;
+<span class="branch-1 cbranch-no" title="branch not covered" >                case TYPE_UNSUBSCRIBE:</span>
+<span class="cstat-no" title="statement not covered" >                    topic = data.toString('utf8', 1);</span>
+<span class="cstat-no" title="statement not covered" >                    if (!ths.emit('unsubscribe_requested', topic))</span>
+                    {
+<span class="cstat-no" title="statement not covered" >                        ths.unsubscribe(topic);</span>
+                    }
+<span class="cstat-no" title="statement not covered" >                    break;</span>
+&nbsp;
+<span class="branch-2 cbranch-no" title="branch not covered" >                default:</span>
+<span class="cstat-no" title="statement not covered" >                    error.call(control, new Error('unknown type:' + type));</span>
+<span class="cstat-no" title="statement not covered" >                    break;</span>
+            }
+        });
+&nbsp;
+        this.on('handshake', function (duplex, hdata, delay)
+        {
+            if (!delay)
+            {
+                // duplex was initiated by us (outgoing message)
+                return;
+            }
+&nbsp;
+            duplex.on('error', warning);
+            duplex.end(); // only read from incoming message duplex
+&nbsp;
+            <span class="missing-if-branch" title="if path not taken" >I</span>if (hdata.length === 0)
+            {
+<span class="cstat-no" title="statement not covered" >                return warning.call(duplex, new Error('empty buffer'));</span>
+            }
+&nbsp;
+            var options = {},
+                flags = hdata.readUInt8(0, true),
+                pos = 1,
+                topic;
+&nbsp;
+            options.single = !!(flags &amp; 1);
+&nbsp;
+            if (flags &amp; 2)
+            {
+                options.ttl = Math.min(
+                        options.single ? <span class="branch-0 cbranch-no" title="branch not covered" >fsq._single_ttl </span>: fsq._multi_ttl,
+                        hdata.readUInt32BE(1, true) * 1000);
+                pos += 4;
+            }
+&nbsp;
+            topic = hdata.toString('utf8', pos);
+&nbsp;
+            <span class="missing-if-branch" title="else path not taken" >E</span>if (!ths.emit('publish_requested', topic, duplex, options))
+            {
+                duplex.pipe(ths._fsq.publish(topic, options));
+            }
+        });
+&nbsp;
+        ths.emit('handshake', hdata, delay);
+    });
+}
+&nbsp;
+util.inherits(MQlobberServer, EventEmitter);
+&nbsp;
+MQlobberServer.prototype.subscribe = function (topic)
+{
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (!this._done &amp;&amp; !this._subs.has(topic))
+    {
+        this._fsq.subscribe(topic, this._handler);
+        this._subs.add(topic);
+    }
+};
+&nbsp;
+MQlobberServer.prototype.unsubscribe = function (topic)
+{
+    <span class="missing-if-branch" title="else path not taken" >E</span>if (topic === undefined)
+    {
+        for (var t of this._subs)
+        {
+            this._fsq.unsubscribe(t, this._handler);
+        }
+        this._subs.clear();
+    }
+    else <span class="cstat-no" title="statement not covered" >if (this._subs.has(topic))</span>
+    {
+<span class="cstat-no" title="statement not covered" >        this._fsq.unsubscribe(topic, this._handler);</span>
+<span class="cstat-no" title="statement not covered" >        this._subs.delete(topic);</span>
+    }
+};
+&nbsp;
+exports.MQlobberServer = MQlobberServer;
+&nbsp;</pre></td></tr>
+</table></pre>
+<div class='push'></div><!-- for sticky footer -->
+</div><!-- /wrapper -->
+<div class='footer quiet pad2 space-top1 center small'>
+  Code coverage
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Thu May 26 2016 22:39:36 GMT+0100 (BST)
+</div>
+</div>
+<script src="../../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../../sorter.js"></script>
+</body>
+</html>

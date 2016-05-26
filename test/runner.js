@@ -1,21 +1,40 @@
 /*jshint mocha: true */
 "use strict";
 
-var async = require('async'),
+var stream = require('stream'),
+    async = require('async'),
     mqlobber = require('..'),
     MQlobberClient = mqlobber.MQlobberClient,
     MQlobberServer = mqlobber.MQlobberServer,
-    QlobberFSQ = require('qlobber-fsq').QlobberFSQ;
+    QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
+    chai = require('chai'),
+    expect = chai.expect;
 
-// start with single stream, do multiple streams later
-//   but perhaps we should have concept of separate streams now
-//   (e.g. for pub and sub) even if we use same stream
-//   maybe test should specify how many streams to make
-// start with single server, do multi-process server later (clustered?)
+function read_all(s, cb)
+{
+    var bufs = [];
+
+    s.on('end', function ()
+    {
+        cb(Buffer.concat(bufs));
+    });
+
+    s.on('readable', function ()
+    {
+        while (true)
+        {
+            var data = this.read();
+            if (data === null) { break; }
+            bufs.push(data);
+        }
+    });
+}
+
+var timeout = 10 * 60;
 
 module.exports = function (description, connect, accept)
 {
-    function with_mqs(n, description, f)
+    function with_mqs(n, description, f, mqit)
     {
         describe('mqs=' + n, function ()
         {
@@ -23,7 +42,14 @@ module.exports = function (description, connect, accept)
 
             before(function (cb)
             {
-                fsq = new QlobberFSQ();
+                this.timeout(timeout * 1000);
+
+                fsq = new QlobberFSQ(
+                {
+                    multi_ttl: timeout * 1000,
+                    single_ttl: timeout * 1000
+                });
+
                 fsq.on('start', function ()
                 {
                     async.times(n, function (i, cb)
@@ -33,7 +59,7 @@ module.exports = function (description, connect, accept)
                             accept(cs, function (ss)
                             {
                                 var cmq = new MQlobberClient(cs),
-                                    smq = new MQlobberServer(fsq, ss);
+                                    smq = new MQlobberServer(fsq, ss, { send_expires: true });
 
                                 cmq.on('handshake', function ()
                                 {
@@ -73,9 +99,9 @@ module.exports = function (description, connect, accept)
                 });
             });
 
-            it(description, function (cb)
+            (mqit || it)(description, function (cb)
             {
-                f(mqs, cb);
+                f.call(this, mqs, cb);
             });
         });
     }
@@ -85,7 +111,13 @@ module.exports = function (description, connect, accept)
     {
         mqs[0].client.subscribe('foo', function (s, info)
         {
-            cb();
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
         }, function (err)
         {
             if (err) { return cb(err); }
@@ -96,6 +128,177 @@ module.exports = function (description, connect, accept)
             });
         });
     });
+
+    with_mqs(2, 'should publish on one stream and receive on another',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[1].client.publish('foo', function (err, s)
+            {
+                if (err) { return cb(err); }
+                s.end('bar');
+            });
+        });
+    });
+
+    function n_streams_m_messages(n, m)
+    {
+        with_mqs(n, 'should publish ' + m + ' messages on each stream', function (mqs, cb)
+        {
+            this.timeout(timeout * 1000);
+
+            var count_in = 0, receiveds = [];
+
+            function check()
+            {
+                count_in += 1;
+                //console.log('in', count_in);
+                if (count_in === n * n * m)
+                {
+                    expect(receiveds.length).to.equal(n);
+                    //console.log(receiveds);
+                    for (var received of receiveds)
+                    {
+                        expect(received.size === n * m);
+                        for (var x = 0; x < n; x += 1)
+                        {
+                            for (var y = 0; y < m; y += 1)
+                            {
+                                expect(received.get('foo.' + x + '.' + y)).to.equal('bar.' + x + '.' + y);
+                            }
+                        }
+                    }
+                    // allow time for unexpected messages
+                    cb();
+                }
+                else if (count_in > n * n * m)
+                {
+                    cb(new Error('too many messages'));
+                }
+            }
+
+            async.times(n, function (i, cb2)
+            {
+                receiveds[i] = new Map();
+                mqs[i].client.subscribe('foo.#', function (s, info)
+                {
+                    expect(info.single).to.equal(false);
+                    read_all(s, function (v)
+                    {
+                        receiveds[i].set(info.topic, v.toString());
+                        check();
+                    });
+                }, cb2);
+            }, function (err)
+            {
+                var count_out = 0;
+
+                if (err) { return cb(err); }
+                async.timesLimit(n, 10, function (i, cb3)
+                {
+                    async.timesLimit(m, 10, function (j, cb4)
+                    {
+                        mqs[i].client.publish('foo.' + i + '.' + j,
+                        {
+                            ttl: timeout,
+                        }, function (err, s)
+                        {
+                            if (err) { return cb(err); }
+                            s.end('bar.' + i + '.' + j);
+                            s.on('handshake', function ()
+                            {
+                                count_out += 1;
+                                //console.log('out', count_out, arguments);
+                                cb4();
+                            });
+                        });
+                    }, cb3);
+                }, function (err)
+                {
+                    if (err) { return cb(err); }
+                });
+            });
+        });
+    }
+
+    for (var x of [2, 5, 10, 50])
+    {
+        for (var y of [1, 2, 5, 10, 50])
+        {
+            n_streams_m_messages(x, y);
+        }
+    }
+
+    with_mqs(20, 'should support multiple (but de-duplicated) subscribers', function (mqs, cb)
+    {
+        var count = 0;
+
+        for (var mq of mqs)
+        {
+            for (var topic of ['#', 'foo'])
+            {
+                for (var i=0; i < 2; i += 1)
+                {
+                    var h = function (s)
+                    {
+                        var d = new stream.PassThrough();
+                        s.pipe(d);
+
+                        read_all(d, function (data)
+                        {
+                            expect(data.toString()).to.equal('bar');
+                            count += 1;
+                            if (count === mqs.length * 4)
+                            {
+                                cb();
+                            }
+                            else if (count > mqs.length * 4)
+                            {
+                                cb(new Error('called too many times'));
+                            }
+                        });
+                    };
+
+                    mq.client.subscribe(topic, h, function (err)
+                    {
+                        if (err) { return cb(err); }
+                    });
+
+                    mq.client.subscribe(topic, h, function (err)
+                    {
+                        if (err) { return cb(err); }
+                    });
+                }
+            }
+        }
+
+        mqs[1].client.publish('foo', function (err, s)
+        {
+            if (err) { return cb(err); }
+            s.end('bar');
+        });
+    });
+    
+    // should we only end each direction after sending is done?
+    //   (both ways round?) - so can tell when other end has received?
+    // unsubscribe
+    // errors
+    // need to do single messages - will need to remove pre-existing ones
+    // try to get 100% coverage
+    // rabbitmq etc - see qlobber-fsq tests
+    // tcp streams
+    // start with single server, do multi-process server later (clustered?)
 };
 
 /*
