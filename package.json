@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~1.0.2",
+    "bpmux": "~2.0.1",
     "frame-stream": "~1.1.1",
     "qlobber": "~0.7.0"
   },

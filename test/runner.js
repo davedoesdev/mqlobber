@@ -121,11 +121,10 @@ module.exports = function (description, connect, accept)
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[0].client.publish('foo', function (err, s)
+            mqs[0].client.publish('foo', function (err)
             {
                 if (err) { return cb(err); }
-                s.end('bar');
-            });
+            }).end('bar');
         });
     });
 
@@ -147,8 +146,7 @@ module.exports = function (description, connect, accept)
             mqs[1].client.publish('foo', function (err, s)
             {
                 if (err) { return cb(err); }
-                s.end('bar');
-            });
+            }).end('bar');
         });
     });
 
@@ -212,17 +210,13 @@ module.exports = function (description, connect, accept)
                         mqs[i].client.publish('foo.' + i + '.' + j,
                         {
                             ttl: timeout,
-                        }, function (err, s)
+                        }, function (err)
                         {
                             if (err) { return cb(err); }
-                            s.end('bar.' + i + '.' + j);
-                            s.on('handshake', function ()
-                            {
-                                count_out += 1;
-                                //console.log('out', count_out, arguments);
-                                cb4();
-                            });
-                        });
+                            count_out += 1;
+                            //console.log('out', count_out, arguments);
+                            cb4();
+                        }).end('bar.' + i + '.' + j);
                     }, cb3);
                 }, function (err)
                 {
@@ -286,8 +280,7 @@ module.exports = function (description, connect, accept)
         mqs[1].client.publish('foo', function (err, s)
         {
             if (err) { return cb(err); }
-            s.end('bar');
-        });
+        }).end('bar');
     });
     
     // should we only end each direction after sending is done?
