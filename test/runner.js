@@ -238,53 +238,50 @@ module.exports = function (description, connect, accept)
     {
         var count = 0;
 
+        function check_err(err)
+        {
+            if (err) { return cb(err); }
+        }
+
+        function make_check()
+        {
+            return function (s)
+            {
+                var d = new stream.PassThrough();
+                s.pipe(d);
+
+                read_all(d, function (data)
+                {
+                    expect(data.toString()).to.equal('bar');
+                    count += 1;
+                    if (count === mqs.length * 4)
+                    {
+                        cb();
+                    }
+                    else if (count > mqs.length * 4)
+                    {
+                        cb(new Error('called too many times'));
+                    }
+                });
+            };
+        }
+
         for (var mq of mqs)
         {
             for (var topic of ['#', 'foo'])
             {
                 for (var i=0; i < 2; i += 1)
                 {
-                    var h = function (s)
-                    {
-                        var d = new stream.PassThrough();
-                        s.pipe(d);
-
-                        read_all(d, function (data)
-                        {
-                            expect(data.toString()).to.equal('bar');
-                            count += 1;
-                            if (count === mqs.length * 4)
-                            {
-                                cb();
-                            }
-                            else if (count > mqs.length * 4)
-                            {
-                                cb(new Error('called too many times'));
-                            }
-                        });
-                    };
-
-                    mq.client.subscribe(topic, h, function (err)
-                    {
-                        if (err) { return cb(err); }
-                    });
-
-                    mq.client.subscribe(topic, h, function (err)
-                    {
-                        if (err) { return cb(err); }
-                    });
+                    var h = make_check();
+                    mq.client.subscribe(topic, h, check_err);
+                    mq.client.subscribe(topic, h, check_err);
                 }
             }
         }
 
-        mqs[1].client.publish('foo', function (err, s)
-        {
-            if (err) { return cb(err); }
-        }).end('bar');
+        mqs[1].client.publish('foo', check_err).end('bar');
     });
     
-    // should we only end each direction after sending is done?
-    //   (both ways round?) - so can tell when other end has received?
     // unsubscribe
     // errors
     // need to do single messages - will need to remove pre-existing ones
