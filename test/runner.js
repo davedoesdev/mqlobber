@@ -234,7 +234,8 @@ module.exports = function (description, connect, accept)
         }
     }
 
-    with_mqs(20, 'should support multiple (but de-duplicated) subscribers', function (mqs, cb)
+    with_mqs(20, 'should support multiple (but de-duplicated) subscribers',
+    function (mqs, cb)
     {
         var count = 0;
 
@@ -282,8 +283,7 @@ module.exports = function (description, connect, accept)
         mqs[1].client.publish('foo', check_err).end('bar');
     });
 
-    with_mqs(1, 'should unsubscribe handler',
-    function (mqs, cb)
+    with_mqs(1, 'should unsubscribe handler', function (mqs, cb)
     {
         this.timeout(5000);
         function handler1(s, info)
@@ -318,8 +318,7 @@ module.exports = function (description, connect, accept)
         });
     });
 
-    with_mqs(1, 'should unsubscribe topic',
-    function (mqs, cb)
+    with_mqs(1, 'should unsubscribe topic', function (mqs, cb)
     {
         this.timeout(5000);
         function handler1(s, info)
@@ -362,8 +361,7 @@ module.exports = function (description, connect, accept)
         });
     });
 
-    with_mqs(1, 'should unsubscribe all topics',
-    function (mqs, cb)
+    with_mqs(1, 'should unsubscribe all topics', function (mqs, cb)
     {
         this.timeout(5000);
         function handler1()
@@ -401,16 +399,39 @@ module.exports = function (description, connect, accept)
         });
     });
 
+    with_mqs(1, 'should warn about empty handshake data', function (mqs, cb)
+    {
+        mqs[0].client.on('warning', function (err, obj)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(obj).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
 
+        mqs[0].server._mux.multiplex();
+    });
 
+    with_mqs(1, 'should warn about short handshake data', function (mqs, cb)
+    {
+        mqs[0].client.on('warning', function (err, obj)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(obj).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
 
+        mqs[0].server._mux.multiplex(
+        {
+            handshake_data: new Buffer([2])
+        });
+    });
     
-    // unsubscribe
     // errors
     // need to do single messages - will need to remove pre-existing ones
+    // full events and drain on carrier
+    // support without sending expiry
     // try to get 100% coverage
     // rabbitmq etc - see qlobber-fsq tests
-    // full events and drain on carrier
     // tcp streams
     // start with single server, do multi-process server later (clustered?)
 };
