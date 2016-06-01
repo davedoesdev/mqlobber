@@ -581,8 +581,27 @@ module.exports = function (description, connect, accept)
         }).end('bar');
     });
 
+    with_mqs(1, 'client should emit error event when mux errors',
+    function (mqs, cb)
+    {
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('test error');
+            cb();
+        });
+        mqs[0].client._mux.emit('error', new Error('test error'));
+    });
 
-
+    with_mqs(1, 'server should emit error event when mux errors',
+    function (mqs, cb)
+    {
+        mqs[0].server.on('error', function (err)
+        {
+            expect(err.message).to.equal('test error');
+            cb();
+        });
+        mqs[0].server._mux.emit('error', new Error('test error'));
+    });
 
 
     
