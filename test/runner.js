@@ -536,6 +536,53 @@ module.exports = function (description, connect, accept)
         });
     });
 
+    with_mqs(1, 'should send server errors to client when publishing',
+    function (mqs, cb)
+    {
+        var got_warning = false;
+
+        mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
+        {
+            done(new Error('test error'));
+        });
+
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('test error');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            got_warning = true;
+        });
+
+        mqs[0].client.publish('foo', function (err)
+        {
+            expect(err.message).to.equal('server error');
+            expect(got_warning).to.equal(true);
+            cb();
+        }).end('bar');
+    });
+
+    with_mqs(1, 'should warn about short return handshakes from server when publishing',
+    function (mqs, cb)
+    {
+        mqs[0].server.on('publish_requested', function (topic, done)
+        {
+            // stop server handshake handler replying
+        });
+
+        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        {
+            delay()(new Buffer(0));
+        });
+
+        mqs[0].client.publish('foo', function (err)
+        {
+            expect(err.message).to.equal('buffer too small');
+            cb();
+        }).end('bar');
+    });
+
+
+
 
 
     
