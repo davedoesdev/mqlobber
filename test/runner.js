@@ -401,10 +401,10 @@ module.exports = function (description, connect, accept)
 
     with_mqs(1, 'should warn about empty handshake data', function (mqs, cb)
     {
-        mqs[0].client.on('warning', function (err, obj)
+        mqs[0].client.on('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
-            expect(obj).to.be.an.instanceof(stream.Duplex);
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
             cb();
         });
 
@@ -413,10 +413,10 @@ module.exports = function (description, connect, accept)
 
     with_mqs(1, 'should warn about short handshake data', function (mqs, cb)
     {
-        mqs[0].client.on('warning', function (err, obj)
+        mqs[0].client.on('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
-            expect(obj).to.be.an.instanceof(stream.Duplex);
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
             cb();
         });
 
@@ -425,6 +425,119 @@ module.exports = function (description, connect, accept)
             handshake_data: new Buffer([2])
         });
     });
+
+    with_mqs(1, 'should send server errors to client when subscribing',
+    function (mqs, cb)
+    {
+        var got_warning = false;
+
+        mqs[0].server.on('subscribe_requested', function (topic, done)
+        {
+            done(new Error('test error'));
+        });
+
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('test error');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            got_warning = true;
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            expect(err.message).to.equal('server error');
+            expect(got_warning).to.equal(true);
+            cb();
+        });
+    });
+
+    with_mqs(1, 'should warn about short return handshakes from server when subscribing',
+    function (mqs, cb)
+    {
+        mqs[0].server.on('subscribe_requested', function (topic, done)
+        {
+            // stop server handshake handler replying
+        });
+
+        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        {
+            delay()(new Buffer(0));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            expect(err.message).to.equal('buffer too small');
+            cb();
+        });
+    });
+
+    with_mqs(1, 'should send server errors to client when unsubscribing',
+    function (mqs, cb)
+    {
+        var got_warning = false;
+
+        mqs[0].server.on('unsubscribe_requested', function (topic, done)
+        {
+            done(new Error('test error'));
+        });
+
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('test error');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            got_warning = true;
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.unsubscribe('foo', function (err)
+            {
+                expect(err.message).to.equal('server error');
+                expect(got_warning).to.equal(true);
+                cb();
+            });
+        });
+    });
+
+    with_mqs(1, 'should warn about short return handshakes from server when unsubscribing',
+    function (mqs, cb)
+    {
+        mqs[0].server.on('unsubscribe_requested', function (topic, done)
+        {
+            // stop server handshake handler replying
+        });
+
+        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        {
+            delay()(new Buffer(0));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.unsubscribe('foo', function (err)
+            {
+                expect(err.message).to.equal('buffer too small');
+                cb();
+            });
+        });
+    });
+
+
+
     
     // errors
     // need to do single messages - will need to remove pre-existing ones
