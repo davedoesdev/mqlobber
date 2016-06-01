@@ -281,12 +281,136 @@ module.exports = function (description, connect, accept)
 
         mqs[1].client.publish('foo', check_err).end('bar');
     });
+
+    with_mqs(1, 'should unsubscribe handler',
+    function (mqs, cb)
+    {
+        this.timeout(5000);
+        function handler1(s, info)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                setTimeout(cb, 2000);
+            });
+        }
+        function handler2()
+        {
+            cb(new Error('should not be called'));
+        }
+        mqs[0].client.subscribe('foo', handler1, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.subscribe('foo', handler2, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.unsubscribe('foo', handler2, function (err)
+                {
+                    if (err) { return cb(err); }
+                    mqs[0].client.publish('foo', function (err)
+                    {
+                        if (err) { return cb(err); }
+                    }).end('bar');
+                });
+            });
+        });
+    });
+
+    with_mqs(1, 'should unsubscribe topic',
+    function (mqs, cb)
+    {
+        this.timeout(5000);
+        function handler1(s, info)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                setTimeout(cb, 2000);
+            });
+        }
+        function handler2()
+        {
+            cb(new Error('should not be called'));
+        }
+        function handler3()
+        {
+            cb(new Error('should not be called'));
+        }
+        mqs[0].client.subscribe('#', handler1, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.subscribe('foo', handler2, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.subscribe('foo', handler3, function (err)
+                {
+                    if (err) { return cb(err); }
+                    mqs[0].client.unsubscribe('foo', function (err)
+                    {
+                        if (err) { return cb(err); }
+                        mqs[0].client.publish('foo', function (err)
+                        {
+                            if (err) { return cb(err); }
+                        }).end('bar');
+                    });
+                });
+            });
+        });
+    });
+
+    with_mqs(1, 'should unsubscribe all topics',
+    function (mqs, cb)
+    {
+        this.timeout(5000);
+        function handler1()
+        {
+            cb(new Error('should not be called'));
+        }
+        function handler2()
+        {
+            cb(new Error('should not be called'));
+        }
+        function handler3()
+        {
+            cb(new Error('should not be called'));
+        }
+        mqs[0].client.subscribe('#', handler1, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.subscribe('foo', handler2, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.subscribe('foo', handler3, function (err)
+                {
+                    if (err) { return cb(err); }
+                    mqs[0].client.unsubscribe(function (err)
+                    {
+                        if (err) { return cb(err); }
+                        mqs[0].client.publish('foo', function (err)
+                        {
+                            if (err) { return cb(err); }
+                            setTimeout(cb, 2000);
+                        }).end('bar');
+                    });
+                });
+            });
+        });
+    });
+
+
+
+
     
     // unsubscribe
     // errors
     // need to do single messages - will need to remove pre-existing ones
     // try to get 100% coverage
     // rabbitmq etc - see qlobber-fsq tests
+    // full events and drain on carrier
     // tcp streams
     // start with single server, do multi-process server later (clustered?)
 };
