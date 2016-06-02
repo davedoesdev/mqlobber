@@ -2,6 +2,7 @@
 "use strict";
 
 var stream = require('stream'),
+    util = require('util'),
     async = require('async'),
     mqlobber = require('..'),
     MQlobberClient = mqlobber.MQlobberClient,
@@ -34,11 +35,11 @@ var timeout = 10 * 60;
 
 module.exports = function (description, connect, accept)
 {
-    function with_mqs(n, description, f, mqit)
+    function with_mqs(n, description, f, mqit, options)
     {
         describe('mqs=' + n, function ()
         {
-            var fsq, mqs;
+            var fsq, mqs, ended = false;
 
             before(function (cb)
             {
@@ -59,7 +60,11 @@ module.exports = function (description, connect, accept)
                             accept(cs, function (ss)
                             {
                                 var cmq = new MQlobberClient(cs),
-                                    smq = new MQlobberServer(fsq, ss, { send_expires: true });
+                                    smq = new MQlobberServer(fsq, ss,
+                                          util._extend(
+                                          {
+                                              send_expires: true
+                                          }, options));
 
                                 cmq.on('handshake', function ()
                                 {
@@ -80,8 +85,14 @@ module.exports = function (description, connect, accept)
                 });
             });
 
-            after(function (cb)
+            function end(cb)
             {
+                if (ended)
+                {
+                    return cb();
+                }
+                ended = true;
+
                 async.each(mqs, function (mq, cb)
                 {
                     mq.client_stream.on('end', cb);
@@ -97,11 +108,13 @@ module.exports = function (description, connect, accept)
                         cb(err);
                     });
                 });
-            });
+            }
+
+            after(end);
 
             (mqit || it)(description, function (cb)
             {
-                f.call(this, mqs, cb);
+                f.call(this, mqs, cb, end);
             });
         });
     }
@@ -113,6 +126,12 @@ module.exports = function (description, connect, accept)
         {
             expect(info.single).to.equal(false);
             expect(info.topic).to.equal('foo');
+
+            var now = Date.now(), expires = info.expires * 1000;
+
+            expect(expires).to.be.above(now);
+            expect(expires).to.be.below(now + timeout * 1000);
+
             read_all(s, function (v)
             {
                 expect(v.toString()).to.equal('bar');
@@ -348,7 +367,7 @@ module.exports = function (description, connect, accept)
                 mqs[0].client.subscribe('foo', handler3, function (err)
                 {
                     if (err) { return cb(err); }
-                    mqs[0].client.unsubscribe('foo', function (err)
+                    mqs[0].client.unsubscribe('foo', undefined, function (err)
                     {
                         if (err) { return cb(err); }
                         mqs[0].client.publish('foo', function (err)
@@ -500,7 +519,7 @@ module.exports = function (description, connect, accept)
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[0].client.unsubscribe('foo', function (err)
+            mqs[0].client.unsubscribe('foo', undefined, function (err)
             {
                 expect(err.message).to.equal('server error');
                 expect(got_warning).to.equal(true);
@@ -528,7 +547,7 @@ module.exports = function (description, connect, accept)
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[0].client.unsubscribe('foo', function (err)
+            mqs[0].client.unsubscribe('foo', undefined, function (err)
             {
                 expect(err.message).to.equal('buffer too small');
                 cb();
@@ -603,7 +622,88 @@ module.exports = function (description, connect, accept)
         mqs[0].server._mux.emit('error', new Error('test error'));
     });
 
+    with_mqs(1, 'client should throw exception when called after stream finishes', function (mqs, cb, end)
+    {
+        end(function ()
+        {
+            expect(function ()
+            {
+                mqs[0].client.subscribe('foo', function ()
+                {
+                    cb(new Error('should not be called'));
+                });
+            }).to.throw('finished');
+            
+            expect(function ()
+            {
+                mqs[0].client.unsubscribe();
+            }).to.throw('finished');
 
+            expect(function ()
+            {
+                mqs[0].client.publish('foo').end('bar');
+            }).to.throw('finished');
+
+            cb();
+        });
+    });
+
+    with_mqs(1, 'should not send expiry time if not requested',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+            expect(info.expires).to.equal(undefined);
+
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+        });
+    }, it, { send_expires: undefined });
+
+    with_mqs(1, 'should support omitting callbacks', function (mqs, cb)
+    {
+        mqs[0].server.on('publish_requested', function ()
+        {
+            cb();
+        });
+
+        mqs[0].server.on('unsubscribe_requested', function (topic, done)
+        {
+            expect(topic).to.equal('foo');
+            this.unsubscribe(topic, function ()
+            {
+                done();
+                mqs[0].client.publish('foo').end('bar');
+            });
+        });
+
+        mqs[0].server.on('subscribe_requested', function (topic, done)
+        {
+            expect(topic).to.equal('foo');
+            this.subscribe(topic, function ()
+            {
+                done();
+                mqs[0].client.unsubscribe('foo');
+            });
+        });
+
+        mqs[0].client.subscribe('foo', function (s)
+        {
+            cb(new Error('should not be called'));
+        });
+    });
     
     // errors
     // need to do single messages - will need to remove pre-existing ones
