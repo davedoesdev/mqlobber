@@ -47,9 +47,9 @@
     "chai": "~3.5.0",
     "istanbul": "~0.4.3",
     "coveralls": "~2.11.9",
-    "b": "git://github.com/davedoesdev/b.git",
     "qlobber-fsq": "3.0.1",
-    "async": "~1.5.2"
+    "async": "~1.5.2",
+    "rimraf": "~2.5.2"
   },
   "engines": {
     "node": ">=0.12"

@@ -3,7 +3,9 @@
 
 var stream = require('stream'),
     util = require('util'),
+    path = require('path'),
     async = require('async'),
+    rimraf = require('rimraf'),
     mqlobber = require('..'),
     MQlobberClient = mqlobber.MQlobberClient,
     MQlobberServer = mqlobber.MQlobberServer,
@@ -43,12 +45,18 @@ module.exports = function (description, connect, accept)
 
             before(function (cb)
             {
+                var fsq_dir = path.join(path.dirname(require.resolve('qlobber-fsq')), 'fsq');
+                rimraf(fsq_dir, cb);
+            });
+
+            before(function (cb)
+            {
                 this.timeout(timeout * 1000);
 
                 fsq = new QlobberFSQ(
                 {
                     multi_ttl: timeout * 1000,
-                    single_ttl: timeout * 1000
+                    single_ttl: timeout * 2 * 1000
                 });
 
                 fsq.on('start', function ()
@@ -764,10 +772,215 @@ module.exports = function (description, connect, accept)
             mqs[0].client.unsubscribe('bar', undefined, cb);
         });
     });
+
+    with_mqs(1, 'should not ask server to unsubscribe if handler has not been subscribed', function (mqs, cb)
+    {
+        function handler1() { }
+        function handler2() { }
+
+        mqs[0].server.on('unsubscribe_requested', function ()
+        {
+            cb(new Error('should not be called'));
+        });
+
+        mqs[0].client.subscribe('foo', handler1, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.unsubscribe('foo', handler2, cb);
+        });
+    });
+
+    with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb)
+    {
+        this.timeout(2 * 60 * 1000);
+
+        var orig_write = mqs[0].client_stream._write,
+            the_chunk,
+            the_encoding,
+            the_callback,
+            count_complete = 0,
+            count_incomplete = 0,
+            full_called = false;
+
+        mqs[0].client_stream._write = function (chunk, encoding, callback)
+        {
+            the_chunk = chunk;
+            the_encoding = encoding;
+            the_callback = callback;
+        };
+
+        // number will change if bpmux handhsake buffer size changes
+
+        mqs[0].client.on('full', function ()
+        {
+            expect(count_complete).to.equal(2992);
+            expect(count_incomplete).to.equal(0); // only counted below
+            full_called = true;
+        });
+
+        function sent(complete)
+        {
+            if (complete)
+            {
+                count_complete += 1;
+            }
+            else
+            {
+                count_incomplete += 1;
+            }
+            if ((count_complete + count_incomplete) == 2993)
+            {
+                expect(count_complete).to.equal(2992);
+                expect(count_incomplete).to.equal(1);
+                expect(full_called).to.equal(true);
+                mqs[0].client_stream._write = orig_write;
+                mqs[0].client_stream._write(the_chunk, the_encoding, the_callback);
+                cb();
+            }
+        }
+
+        for (var i=0; i < 2993; i += 1)
+        {
+            var duplex = mqs[0].client.publish('foo');
+            duplex.on('handshake_sent', sent);
+            duplex.end('bar');
+        }
+    });
+
+    with_mqs(1, 'should publish and receive work on single stream',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now(), expires = info.expires * 1000;
+
+            expect(expires).to.be.above(now);
+            expect(expires).to.be.below(now + timeout * 2 * 1000);
+
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should publish and receive work using one handler on single stream',
+    function (mqs, cb)
+    {
+        this.timeout(5000);
+
+        var calls = 0, data = '';
+
+        function check(s, info)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var d = new stream.PassThrough();
+            s.pipe(d);
+
+            read_all(d, function (v)
+            {
+                var str = v.toString();
+                expect(str).to.equal('bar');
+                data += str;
+            });
+
+            calls += 1;
+        }
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            check(s, info);
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.subscribe('foo', function (s, info)
+            {
+                check(s, info);
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.publish('foo', { single: true }, function (err)
+                {
+                    if (err) { return cb(err); }
+                    setTimeout(function ()
+                    {
+                        expect(calls).to.equal(1);
+                        expect(data).to.equal('bar');
+                        cb();
+                    }, 2000);
+                }).end('bar');
+            });
+        });
+    });
+
+    with_mqs(3, 'should publish and receive work using one handler on multiple streams',
+    function (mqs, cb)
+    {
+        this.timeout(5000);
+
+        var calls = 0, data = '';
+
+        function check(s, info)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var d = new stream.PassThrough();
+            s.pipe(d);
+
+            read_all(d, function (v)
+            {
+                var str = v.toString();
+                expect(str).to.equal('bar');
+                data += str;
+            });
+
+            calls += 1;
+        }
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            check(s, info);
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[1].client.subscribe('foo', function (s, info)
+            {
+                check(s, info);
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[2].client.publish('foo', { single: true }, function (err)
+                {
+                    if (err) { return cb(err); }
+                    setTimeout(function ()
+                    {
+                        expect(calls).to.equal(1);
+                        expect(data).to.equal('bar');
+                        cb();
+                    }, 2000);
+                }).end('bar');
+            });
+        });
+    });
+
     
     // errors
     // need to do single messages - will need to remove pre-existing ones
-    // full events and drain on carrier
+    // test ttl values when set in publish options
     // support without sending expiry
     // try to get 100% coverage
     // rabbitmq etc - see qlobber-fsq tests
