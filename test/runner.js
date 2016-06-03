@@ -674,26 +674,59 @@ module.exports = function (description, connect, accept)
 
     with_mqs(1, 'should support omitting callbacks', function (mqs, cb)
     {
-        mqs[0].server.on('publish_requested', function ()
+        mqs[0].server.on('unsubscribe_all_requested', function (done)
         {
-            cb();
+            this.unsubscribe(function (err)
+            {
+                if (err) { return cb(err); }
+                done();
+                cb();
+            });
+        });
+
+        mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
+        {
+            expect(topic).to.equal('foo');
+            duplex.pipe(this._fsq.publish(topic, options, function (err)
+            {
+                if (err) { return cb(err); }
+                done();
+
+                mqs[0].server.once('subscribe_requested', function (topic, done)
+                {
+                    expect(topic).to.equal('foo');
+                    this.subscribe(topic, function (err)
+                    {
+                        if (err) { return cb(err); }
+                        done();
+                        mqs[0].client.unsubscribe();
+                    });
+                });
+
+                mqs[0].client.subscribe('foo', function (s)
+                {
+                    cb(new Error('should not be called'));
+                });
+            }));
         });
 
         mqs[0].server.on('unsubscribe_requested', function (topic, done)
         {
             expect(topic).to.equal('foo');
-            this.unsubscribe(topic, function ()
+            this.unsubscribe(topic, function (err)
             {
+                if (err) { return cb(err); }
                 done();
                 mqs[0].client.publish('foo').end('bar');
             });
         });
 
-        mqs[0].server.on('subscribe_requested', function (topic, done)
+        mqs[0].server.once('subscribe_requested', function (topic, done)
         {
             expect(topic).to.equal('foo');
-            this.subscribe(topic, function ()
+            this.subscribe(topic, function (err)
             {
+                if (err) { return cb(err); }
                 done();
                 mqs[0].client.unsubscribe('foo');
             });
@@ -702,6 +735,33 @@ module.exports = function (description, connect, accept)
         mqs[0].client.subscribe('foo', function (s)
         {
             cb(new Error('should not be called'));
+        });
+    });
+
+    with_mqs(1, 'should not ask server to unsubscribe all if there are no subscriptions', function (mqs, cb)
+    {
+        mqs[0].server.on('unsubscribe_all_requested', function ()
+        {
+            cb(new Error('should not be called'));
+        });
+
+        mqs[0].client.unsubscribe(cb);
+    });
+
+    with_mqs(1, 'should not ask server to unsubscribe if there are no subscriptions for a topic', function (mqs, cb)
+    {
+        mqs[0].server.on('unsubscribe_requested', function ()
+        {
+            cb(new Error('should not be called'));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.unsubscribe('bar', undefined, cb);
         });
     });
     
