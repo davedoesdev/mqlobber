@@ -11,7 +11,8 @@ var stream = require('stream'),
     MQlobberServer = mqlobber.MQlobberServer,
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
     chai = require('chai'),
-    expect = chai.expect;
+    expect = chai.expect,
+    sinon = require('sinon');
 
 function read_all(s, cb)
 {
@@ -119,6 +120,19 @@ module.exports = function (description, connect, accept)
             }
 
             after(end);
+
+            if (options && options.sinon)
+            {
+                beforeEach(function ()
+                {
+                    this.sinon = sinon.sandbox.create();
+                });
+
+                afterEach(function ()
+                {
+                    this.sinon.restore();
+                });
+            }
 
             (mqit || it)(description, function (cb)
             {
@@ -977,12 +991,22 @@ module.exports = function (description, connect, accept)
         });
     });
 
+    with_mqs(1, 'should write warning to console if no event listeners are registered', function (mqs, cb)
+    {
+        this.sinon.stub(console, 'error');
+
+        setTimeout(function ()
+        {
+            expect(console.error.calledOnce).to.equal(true);
+            expect(console.error.calledWith(new Error('buffer too small'))).to.equal(true);
+            cb();
+        }.bind(this), 1000);
+
+        mqs[0].server._mux.multiplex();
+    }, it, { sinon: true });
     
-    // errors
-    // need to do single messages - will need to remove pre-existing ones
-    // test ttl values when set in publish options
-    // support without sending expiry
     // try to get 100% coverage
+    // test ttl values when set in publish options
     // rabbitmq etc - see qlobber-fsq tests
     // tcp streams
     // start with single server, do multi-process server later (clustered?)
