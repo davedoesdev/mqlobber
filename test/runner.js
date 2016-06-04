@@ -70,6 +70,7 @@ module.exports = function (description, connect, accept)
                             {
                                 var cmq = new MQlobberClient(cs),
                                     smq = new MQlobberServer(fsq, ss,
+                                          options === null ? options :
                                           util._extend(
                                           {
                                               send_expires: true
@@ -440,7 +441,7 @@ module.exports = function (description, connect, accept)
         });
     });
 
-    with_mqs(1, 'should warn about empty handshake data', function (mqs, cb)
+    with_mqs(1, 'client should warn about empty handshake data', function (mqs, cb)
     {
         mqs[0].client.on('warning', function (err, duplex)
         {
@@ -452,7 +453,7 @@ module.exports = function (description, connect, accept)
         mqs[0].server._mux.multiplex();
     });
 
-    with_mqs(1, 'should warn about short handshake data', function (mqs, cb)
+    with_mqs(1, 'client should warn about short handshake data', function (mqs, cb)
     {
         mqs[0].client.on('warning', function (err, duplex)
         {
@@ -692,7 +693,7 @@ module.exports = function (description, connect, accept)
                 if (err) { return cb(err); }
             }).end('bar');
         });
-    }, it, { send_expires: undefined });
+    }, it, null);
 
     with_mqs(1, 'should support omitting callbacks', function (mqs, cb)
     {
@@ -991,7 +992,7 @@ module.exports = function (description, connect, accept)
         });
     });
 
-    with_mqs(1, 'should write warning to console if no event listeners are registered', function (mqs, cb)
+    with_mqs(1, 'client should write warning to console if no event listeners are registered', function (mqs, cb)
     {
         this.sinon.stub(console, 'error');
 
@@ -1004,6 +1005,128 @@ module.exports = function (description, connect, accept)
 
         mqs[0].server._mux.multiplex();
     }, it, { sinon: true });
+
+    with_mqs(1, 'server should warn about empty handshake data', function (mqs, cb)
+    {
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
+
+        mqs[0].client._mux.multiplex();
+    });
+
+    with_mqs(1, 'server should warn about short handshake data', function (mqs, cb)
+    {
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
+
+        mqs[0].client._mux.multiplex(
+        {
+            handshake_data: new Buffer([3, 2])
+        });
+    });
+
+    with_mqs(1, 'should warn about unknown operation type', function (mqs, cb)
+    {
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('unknown type: 100');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
+
+        mqs[0].client._mux.multiplex(
+        {
+            handshake_data: new Buffer([100])
+        });
+    });
+
+    with_mqs(1, 'server should write warning to console if no event listeners are registered', function (mqs, cb)
+    {
+        this.sinon.stub(console, 'error');
+
+        setTimeout(function ()
+        {
+            expect(console.error.calledOnce).to.equal(true);
+            expect(console.error.calledWith(new Error('buffer too small'))).to.equal(true);
+            cb();
+        }.bind(this), 1000);
+
+        mqs[0].client._mux.multiplex();
+    }, it, { sinon: true });
+
+    with_mqs(1, 'should emit full event when server handshakes are backed up', function (mqs, cb)
+    {
+        this.timeout(2 * 60 * 1000);
+
+        var orig_write = mqs[0].server_stream._write,
+            the_chunk,
+            the_encoding,
+            the_callback,
+            count_complete = 0,
+            count_incomplete = 0,
+            full_called = false;
+
+        mqs[0].server_stream._write = function (chunk, encoding, callback)
+        {
+            the_chunk = chunk;
+            the_encoding = encoding;
+            the_callback = callback;
+        };
+
+        // number will change if bpmux handhsake buffer size changes
+
+        mqs[0].server.on('full', function ()
+        {
+            expect(count_complete).to.equal(2517);
+            expect(count_incomplete).to.equal(0); // only counted below
+            full_called = true;
+        });
+
+        function sent(complete)
+        {
+            if (complete)
+            {
+                count_complete += 1;
+            }
+            else
+            {
+                count_incomplete += 1;
+            }
+            if ((count_complete + count_incomplete) == 2518)
+            {
+                expect(count_complete).to.equal(2517);
+                expect(count_incomplete).to.equal(1);
+                expect(full_called).to.equal(true);
+                mqs[0].server_stream._write = orig_write;
+                mqs[0].server_stream._write(the_chunk, the_encoding, the_callback);
+                cb();
+            }
+        }
+
+        mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
+        {
+            duplex.on('handshake_sent', sent);
+            done();
+        });
+
+        for (var i=0; i < 2518; i += 1)
+        {
+            mqs[0].client.publish('foo').end('bar');
+        }
+    });
+
+
+
+
+
     
     // try to get 100% coverage
     // test ttl values when set in publish options
