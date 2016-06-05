@@ -1018,7 +1018,22 @@ module.exports = function (description, connect, accept)
         mqs[0].client._mux.multiplex();
     });
 
-    with_mqs(1, 'server should warn about short handshake data', function (mqs, cb)
+    with_mqs(1, 'server should warn about short handshake data (no flags)', function (mqs, cb)
+    {
+        mqs[0].server.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
+
+        mqs[0].client._mux.multiplex(
+        {
+            handshake_data: new Buffer([3])
+        });
+    });
+
+    with_mqs(1, 'server should warn about short handshake data (no ttl)', function (mqs, cb)
     {
         mqs[0].server.on('warning', function (err, duplex)
         {
@@ -1124,7 +1139,68 @@ module.exports = function (description, connect, accept)
     });
 
 
+    with_mqs(1, 'should emit a message event when fsq gives it a message', function (mqs, cb)
+    {
+        mqs[0].server.on('message', function (data, info, multiplex)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
 
+            var now = Date.now();
+
+            expect(info.expires).to.be.above(now);
+            expect(info.expires).to.be.below(now + timeout * 1000);
+
+            expect(multiplex).to.be.an.instanceof(Function);
+
+            read_all(data, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo').end('bar');
+        });
+    });
+
+    with_mqs(1, 'should publish and receive work with ttl',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now(), expires = info.expires * 1000;
+
+            expect(expires).to.be.above(now);
+            expect(expires).to.be.below(now + timeout * 1000);
+
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo',
+            {
+                single: true,
+                ttl: timeout
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+        });
+    });
 
 
     
