@@ -1202,9 +1202,136 @@ module.exports = function (description, connect, accept)
         });
     });
 
+    with_mqs(1, 'server should pass on fsq errors in its subscribe method',
+    function (mqs, cb)
+    {
+        mqs[0].server._fsq.subscribe = function (topic, handler, cb)
+        {
+            cb(new Error('test'));
+        };
 
+        mqs[0].server.subscribe('foo', function (err)
+        {
+            expect(err.message).to.equal('test');
+            cb();
+        });
+    });
     
-    // try to get 100% coverage
+    with_mqs(1, 'server should warn about fsq errors in its subscribe method',
+    function (mqs, cb)
+    {
+        this.sinon.stub(console, 'error');
+
+        mqs[0].server._fsq.subscribe = function (topic, handler, cb)
+        {
+            cb(new Error('test'));
+        };
+
+        setTimeout(function ()
+        {
+            expect(console.error.calledOnce).to.equal(true);
+            expect(console.error.calledWith(new Error('test'))).to.equal(true);
+            cb();
+        }.bind(this), 1000);
+
+        mqs[0].server.subscribe('foo');
+    }, it, { sinon: true });
+
+    with_mqs(1, 'server should not warn if there are no fsq errors in its subscribe method',
+    function (mqs, cb)
+    {
+        this.sinon.stub(console, 'error');
+
+        setTimeout(function ()
+        {
+            expect(console.error.called).to.equal(false);
+            cb();
+        }.bind(this), 1000);
+
+        mqs[0].server.subscribe('foo');
+    }, it, { sinon: true });
+
+    with_mqs(1, 'server should pass on fsq errors in its unsubscribe(all) method',
+    function (mqs, cb)
+    {
+        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+
+        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        {
+            cb(new Error('test'));
+        };
+
+        mqs[0].server.subscribe('foo', function (err)
+        {
+            if (err) { return cb(err); }
+
+            mqs[0].server.unsubscribe(function (err)
+            {
+                expect(err.message).to.equal('test');
+                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                cb();
+            });
+        });
+    });
+ 
+    with_mqs(1, 'server should pass on fsq errors in its unsubscribe(topic) method',
+    function (mqs, cb)
+    {
+        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+
+        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        {
+            cb(new Error('test'));
+        };
+
+        mqs[0].server.subscribe('foo', function (err)
+        {
+            if (err) { return cb(err); }
+
+            mqs[0].server.unsubscribe('foo', function (err)
+            {
+                expect(err.message).to.equal('test');
+                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                cb();
+            });
+        });
+    });
+
+    with_mqs(1, 'server should warn about fsq errors in its unsubscribe method',
+    function (mqs, cb)
+    {
+        this.sinon.stub(console, 'error');
+
+        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+
+        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        {
+            cb(new Error('test'));
+        };
+
+        mqs[0].server.subscribe('foo', function (err)
+        {
+            if (err) { return cb(err); }
+
+            setTimeout(function ()
+            {
+                expect(console.error.calledOnce).to.equal(true);
+                expect(console.error.calledWith(new Error('test'))).to.equal(true);
+                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                cb();
+            }.bind(this), 1000);
+
+            mqs[0].server.unsubscribe();
+        });
+    }, it, { sinon: true });
+
+    with_mqs(1, 'server should callback without error when unsubscribing from topic not subscribed to',
+    function (mqs, cb)
+    {
+        expect(mqs[0].server._subs.has('foo')).to.equal(false);
+        mqs[0].server.unsubscribe('foo', cb);
+    });
+
     // test ttl values when set in publish options
     // rabbitmq etc - see qlobber-fsq tests
     // tcp streams
