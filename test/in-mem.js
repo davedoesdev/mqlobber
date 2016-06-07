@@ -72,14 +72,10 @@ LeftDuplex.prototype._write = function (chunk, encoding, cb)
     }
 };
 
-function connect(cb)
+function connect_and_accept(cb)
 {
-    cb(new LeftDuplex());
+    var left = new LeftDuplex();
+    cb(left, left.right);
 }
 
-function accept(left, cb)
-{
-    cb(left.right);
-}
-
-common('in-memory', connect, accept);
+common('in-memory', connect_and_accept);

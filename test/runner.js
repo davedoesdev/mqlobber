@@ -12,7 +12,8 @@ var stream = require('stream'),
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
     chai = require('chai'),
     expect = chai.expect,
-    sinon = require('sinon');
+    sinon = require('sinon'),
+    rabbitmq_bindings = require('./rabbitmq_bindings');
 
 function read_all(s, cb)
 {
@@ -34,9 +35,14 @@ function read_all(s, cb)
     });
 }
 
+function topic_sort(a, b)
+{
+    return parseInt(a.substr(1), 10) - parseInt(b.substr(1), 10);
+}
+
 var timeout = 10 * 60;
 
-module.exports = function (description, connect, accept)
+module.exports = function (description, connect_and_accept)
 {
     function with_mqs(n, description, f, mqit, options)
     {
@@ -62,28 +68,25 @@ module.exports = function (description, connect, accept)
 
                 fsq.on('start', function ()
                 {
-                    async.times(n, function (i, cb)
+                    async.timesSeries(n, function (i, cb)
                     {
-                        connect(function (cs)
+                        connect_and_accept(function (cs, ss)
                         {
-                            accept(cs, function (ss)
-                            {
-                                var cmq = new MQlobberClient(cs),
-                                    smq = new MQlobberServer(fsq, ss,
-                                          options === null ? options :
-                                          util._extend(
-                                          {
-                                              send_expires: true
-                                          }, options));
+                            var cmq = new MQlobberClient(cs),
+                                smq = new MQlobberServer(fsq, ss,
+                                      options === null ? options :
+                                      util._extend(
+                                      {
+                                          send_expires: true
+                                      }, options));
 
-                                cmq.on('handshake', function ()
-                                {
-                                    cb(null, {
-                                        client: cmq,
-                                        server: smq,
-                                        client_stream: cs,
-                                        server_stream: ss
-                                    });
+                            cmq.on('handshake', function ()
+                            {
+                                cb(null, {
+                                    client: cmq,
+                                    server: smq,
+                                    client_stream: cs,
+                                    server_stream: ss
                                 });
                             });
                         });
@@ -141,7 +144,7 @@ module.exports = function (description, connect, accept)
             });
         });
     }
-
+/*
     with_mqs(1, 'should publish and receive a message on single stream',
     function (mqs, cb)
     {
@@ -1331,10 +1334,109 @@ module.exports = function (description, connect, accept)
         expect(mqs[0].server._subs.has('foo')).to.equal(false);
         mqs[0].server.unsubscribe('foo', cb);
     });
+*/
 
-    // test ttl values when set in publish options
-    // rabbitmq etc - see qlobber-fsq tests
-    // tcp streams
+    function rabbitmq_topic_tests(topics_per_mq)
+    {
+        var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq);
+
+        describe('rabbitmq topic tests (topics_per_mq=' + topics_per_mq + ')',
+        function ()
+        {
+            with_mqs(num_mqs, 'should match topics correctly',
+            function (mqs, cb)
+            {
+                var results = {},
+                    total = 0,
+                    count = 0;
+
+                for (var i = 0; i < rabbitmq_bindings.expected_results_before_remove.length; i += 1)
+                {
+                    total += rabbitmq_bindings.expected_results_before_remove[i][1].length;
+                }
+
+                async.times(rabbitmq_bindings.test_bindings.length, function (i, cb2)
+                {
+                    var n = Math.floor(i / topics_per_mq);
+
+                    mqs[n].client.subscribe(rabbitmq_bindings.test_bindings[i][0], function (s, info)
+                    {
+                        s.setMaxListeners(0);
+
+                        var pthru = new stream.PassThrough();
+                        s.pipe(pthru);
+
+                        read_all(pthru, function (v)
+                        {
+                            expect(v.toString()).to.equal(info.topic);
+
+                            if (results[info.topic] === undefined)
+                            {
+                                results[info.topic] = [];
+                            }
+
+                            results[info.topic].push('t' + (n + 1));
+
+                            count += 1;
+
+                            if (count === total)
+                            {
+                                var expected = {};
+
+                                for (var entry of rabbitmq_bindings.expected_results_before_remove)
+                                {
+                                    expected[entry[0]] = [];
+
+                                    for (var t of entry[1])
+                                    {
+                                        expected[entry[0]].push('t' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1));
+                                    }
+                                }
+
+                                for (var t in results)
+                                {
+                                    if (results.hasOwnProperty(t))
+                                    {
+                                        results[t].sort(topic_sort);
+                                    }
+                                }
+
+                                expect(results).to.eql(expected);
+                                cb();
+                            }
+                            else if (count > total)
+                            {
+                                cb(new Error('too many messages'));
+                            }
+                        });
+                    }, cb2);
+                }, function (err)
+                {
+                    if (err) { return cb(err); }
+
+                    async.times(rabbitmq_bindings.expected_results_before_remove.length,
+                    function (i, cb3)
+                    {
+                        var entry = rabbitmq_bindings.expected_results_before_remove[i];
+                        mqs[i % num_mqs].client.publish(entry[0], cb3).end(entry[0]);
+                    }, function (err)
+                    {
+                        if (err) { return cb(err); }
+                    });
+                });
+            });
+        });
+    }
+
+    rabbitmq_topic_tests(1);
+    rabbitmq_topic_tests(2);
+    rabbitmq_topic_tests(10);
+    rabbitmq_topic_tests(26);
+
+    // rabbitmq
+                    // remove, clear
+    //    multiple rounds
+
     // start with single server, do multi-process server later (clustered?)
 };
 
