@@ -1337,7 +1337,13 @@ module.exports = function (description, connect_and_accept)
 */
     function rabbitmq_topic_tests2(d, topics_per_mq, expected, f)
     {
-        var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq);
+        var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq),
+            expected_single = new Map();
+
+        for (var entry of expected)
+        {
+            expected_single.set(entry[0], new Set(entry[1]));
+        }
 
         describe('rabbitmq topic tests (' + d + ', topics_per_mq=' + topics_per_mq + ')',
         function ()
@@ -1348,8 +1354,10 @@ module.exports = function (description, connect_and_accept)
                 this.timeout(5 * 1000);
 
                 var results = {},
+                    results_single = {},
                     total = 0,
-                    count = 0;
+                    count = 0,
+                    count_single = 0;
 
                 for (var i = 0; i < expected.length; i += 1)
                 {
@@ -1380,16 +1388,25 @@ module.exports = function (description, connect_and_accept)
                         {
                             expect(v.toString()).to.equal(info.topic);
 
-                            if (results[info.topic] === undefined)
+                            var r = info.single ? results_single : results;
+
+                            if (r[info.topic] === undefined)
                             {
-                                results[info.topic] = [];
+                                r[info.topic] = [];
                             }
 
-                            results[info.topic].push('t' + (n + 1));
+                            r[info.topic].push('t' + (n + 1));
 
-                            count += 1;
+                            if (info.single)
+                            {
+                                count_single += 1;
+                            }
+                            else
+                            {
+                                count += 1;
+                            }
 
-                            if (count === total)
+                            if ((count === total) && (count_single === expected_single.size))
                             {
                                 var expected2 = {};
 
@@ -1436,7 +1453,23 @@ module.exports = function (description, connect_and_accept)
                         async.times(expected.length, function (i, cb3)
                         {
                             var entry = expected[i];
-                            mqs[i % num_mqs].client.publish(entry[0], cb3).end(entry[0]);
+
+                            async.parallel(
+                            [
+                                function (cb4)
+                                {
+                                    mqs[i % num_mqs].client.publish(
+                                            entry[0],
+                                            cb4).end(entry[0]);
+                                },
+                                function (cb4)
+                                {
+                                    mqs[i % num_mqs].client.publish(
+                                            entry[0],
+                                            { single: true },
+                                            cb4).end(entry[0]);
+                                }
+                            ], cb3);
                         }, function (err)
                         {
                             if (err) { return cb(err); }
