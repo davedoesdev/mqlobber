@@ -1335,31 +1335,41 @@ module.exports = function (description, connect_and_accept)
         mqs[0].server.unsubscribe('foo', cb);
     });
 */
-
-    function rabbitmq_topic_tests(topics_per_mq)
+    function rabbitmq_topic_tests2(d, topics_per_mq, expected, f)
     {
         var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq);
 
-        describe('rabbitmq topic tests (topics_per_mq=' + topics_per_mq + ')',
+        describe('rabbitmq topic tests (' + d + ', topics_per_mq=' + topics_per_mq + ')',
         function ()
         {
             with_mqs(num_mqs, 'should match topics correctly',
             function (mqs, cb)
             {
+                this.timeout(5 * 1000);
+
                 var results = {},
                     total = 0,
                     count = 0;
 
-                for (var i = 0; i < rabbitmq_bindings.expected_results_before_remove.length; i += 1)
+                for (var i = 0; i < expected.length; i += 1)
                 {
-                    total += rabbitmq_bindings.expected_results_before_remove[i][1].length;
+                    total += expected[i][1].length;
+                }
+
+                if (total === 0)
+                {
+                    setTimeout(function ()
+                    {
+                        expect(count).to.equal(0);
+                        cb();
+                    }, 3000);
                 }
 
                 async.times(rabbitmq_bindings.test_bindings.length, function (i, cb2)
                 {
                     var n = Math.floor(i / topics_per_mq);
 
-                    mqs[n].client.subscribe(rabbitmq_bindings.test_bindings[i][0], function (s, info)
+                    function handler(s, info)
                     {
                         s.setMaxListeners(0);
 
@@ -1381,15 +1391,15 @@ module.exports = function (description, connect_and_accept)
 
                             if (count === total)
                             {
-                                var expected = {};
+                                var expected2 = {};
 
-                                for (var entry of rabbitmq_bindings.expected_results_before_remove)
+                                for (var entry of expected)
                                 {
-                                    expected[entry[0]] = [];
+                                    expected2[entry[0]] = [];
 
                                     for (var t of entry[1])
                                     {
-                                        expected[entry[0]].push('t' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1));
+                                        expected2[entry[0]].push('t' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1));
                                     }
                                 }
 
@@ -1401,7 +1411,7 @@ module.exports = function (description, connect_and_accept)
                                     }
                                 }
 
-                                expect(results).to.eql(expected);
+                                expect(results).to.eql(expected2);
                                 cb();
                             }
                             else if (count > total)
@@ -1409,33 +1419,85 @@ module.exports = function (description, connect_and_accept)
                                 cb(new Error('too many messages'));
                             }
                         });
-                    }, cb2);
-                }, function (err)
+                    }
+
+                    mqs[n].client.subscribe(rabbitmq_bindings.test_bindings[i][0], handler, function (err)
+                    {
+                        cb2(err, handler);
+                    });
+                }, function (err, handlers)
                 {
                     if (err) { return cb(err); }
 
-                    async.times(rabbitmq_bindings.expected_results_before_remove.length,
-                    function (i, cb3)
-                    {
-                        var entry = rabbitmq_bindings.expected_results_before_remove[i];
-                        mqs[i % num_mqs].client.publish(entry[0], cb3).end(entry[0]);
-                    }, function (err)
+                    function publish(err)
                     {
                         if (err) { return cb(err); }
-                    });
+
+                        async.times(expected.length, function (i, cb3)
+                        {
+                            var entry = expected[i];
+                            mqs[i % num_mqs].client.publish(entry[0], cb3).end(entry[0]);
+                        }, function (err)
+                        {
+                            if (err) { return cb(err); }
+                        });
+                    }
+                    
+                    if (f)
+                    {
+                        f(topics_per_mq, mqs, handlers, publish);
+                    }
+                    else
+                    {
+                        publish();
+                    }
                 });
             });
         });
     }
 
-    rabbitmq_topic_tests(1);
-    rabbitmq_topic_tests(2);
-    rabbitmq_topic_tests(10);
-    rabbitmq_topic_tests(26);
+    function rabbitmq_topic_tests(d, expected, f)
+    {
+        rabbitmq_topic_tests2(d, 1, expected, f);
+        rabbitmq_topic_tests2(d, 2, expected, f);
+        rabbitmq_topic_tests2(d, 10, expected, f);
+        rabbitmq_topic_tests2(d, 26, expected, f);
+    }
+
+    rabbitmq_topic_tests('before remove', rabbitmq_bindings.expected_results_before_remove);
+
+    rabbitmq_topic_tests('after remove', rabbitmq_bindings.expected_results_after_remove, function (topics_per_mq, mqs, handlers, cb)
+    {
+        async.each(rabbitmq_bindings.bindings_to_remove, function (i, cb)
+        {
+            i = i - 1;
+            var n = Math.floor(i / topics_per_mq);
+            mqs[n].client.unsubscribe(rabbitmq_bindings.test_bindings[i][0], handlers[i], cb);
+        }, cb);
+    });
+
+    rabbitmq_topic_tests('after remove all', rabbitmq_bindings.expected_results_after_remove_all, function (topics_per_mq, mqs, handlers, cb)
+    {
+        async.each(rabbitmq_bindings.bindings_to_remove, function (i, cb)
+        {
+            i = i - 1;
+            async.each(mqs, function (mq, cb)
+            {
+                mq.client.unsubscribe(rabbitmq_bindings.test_bindings[i][0], undefined, cb);
+            }, cb);
+        }, cb);
+    });
+
+    rabbitmq_topic_tests('after clear', rabbitmq_bindings.expected_results_after_clear, function (topics_per_mq, mqs, handlers, cb)
+    {
+        async.each(mqs, function (mq, cb)
+        {
+            mq.client.unsubscribe(cb);
+        }, cb);
+    });
 
     // rabbitmq
-                    // remove, clear
-    //    multiple rounds
+    //     multiple rounds
 
     // start with single server, do multi-process server later (clustered?)
 };
