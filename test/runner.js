@@ -1338,11 +1338,20 @@ module.exports = function (description, connect_and_accept)
     function rabbitmq_topic_tests2(d, topics_per_mq, expected, f)
     {
         var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq),
+            expected2 = {},
             expected_single = new Map();
 
         for (var entry of expected)
         {
-            expected_single.set(entry[0], new Set(entry[1]));
+            expected2[entry[0]] = [];
+            expected_single.set(entry[0], new Set());
+
+            for (var t of entry[1])
+            {
+                var t2 = 't' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1)
+                expected2[entry[0]].push(t2);
+                expected_single.get(entry[0]).add(t2);
+            }
         }
 
         describe('rabbitmq topic tests (' + d + ', topics_per_mq=' + topics_per_mq + ')',
@@ -1354,7 +1363,7 @@ module.exports = function (description, connect_and_accept)
                 this.timeout(5 * 1000);
 
                 var results = {},
-                    results_single = {},
+                    results_single = new Map(),
                     total = 0,
                     count = 0,
                     count_single = 0;
@@ -1388,38 +1397,29 @@ module.exports = function (description, connect_and_accept)
                         {
                             expect(v.toString()).to.equal(info.topic);
 
-                            var r = info.single ? results_single : results;
-
-                            if (r[info.topic] === undefined)
-                            {
-                                r[info.topic] = [];
-                            }
-
-                            r[info.topic].push('t' + (n + 1));
-
                             if (info.single)
                             {
+                                if (results_single.has(info.topic))
+                                {
+                                    cb(new Error('single called twice'));
+                                }
+
+                                results_single.set(info.topic, 't' + (n + 1));
                                 count_single += 1;
                             }
                             else
                             {
+                                if (results[info.topic] === undefined)
+                                {
+                                    results[info.topic] = [];
+                                }
+
+                                results[info.topic].push('t' + (n + 1));
                                 count += 1;
                             }
 
                             if ((count === total) && (count_single === expected_single.size))
                             {
-                                var expected2 = {};
-
-                                for (var entry of expected)
-                                {
-                                    expected2[entry[0]] = [];
-
-                                    for (var t of entry[1])
-                                    {
-                                        expected2[entry[0]].push('t' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1));
-                                    }
-                                }
-
                                 for (var t in results)
                                 {
                                     if (results.hasOwnProperty(t))
@@ -1429,6 +1429,14 @@ module.exports = function (description, connect_and_accept)
                                 }
 
                                 expect(results).to.eql(expected2);
+
+                                expect(results_single.size).to.equal(expected_single.size);
+
+                                results_single.forEach(function (v, k)
+                                {
+                                    expect(expected_single.get(k).has(v)).to.equal(true);
+                                });
+
                                 cb();
                             }
                             else if (count > total)
