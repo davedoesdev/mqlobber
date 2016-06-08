@@ -1335,7 +1335,7 @@ module.exports = function (description, connect_and_accept)
         mqs[0].server.unsubscribe('foo', cb);
     });
 */
-    function rabbitmq_topic_tests2(d, topics_per_mq, expected, f)
+    function rabbitmq_topic_tests3(d, topics_per_mq, expected, rounds, f)
     {
         var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq),
             expected2 = {},
@@ -1349,12 +1349,17 @@ module.exports = function (description, connect_and_accept)
             for (var t of entry[1])
             {
                 var t2 = 't' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1)
-                expected2[entry[0]].push(t2);
+
+                for (var i = 0; i < rounds; i += 1)
+                {
+                    expected2[entry[0]].push(t2);
+                }
+
                 expected_single.get(entry[0]).add(t2);
             }
         }
 
-        describe('rabbitmq topic tests (' + d + ', topics_per_mq=' + topics_per_mq + ')',
+        describe('rabbitmq topic tests (' + d + ', topics_per_mq=' + topics_per_mq + ', rounds=' + rounds + ')',
         function ()
         {
             with_mqs(num_mqs, 'should match topics correctly',
@@ -1370,7 +1375,7 @@ module.exports = function (description, connect_and_accept)
 
                 for (var i = 0; i < expected.length; i += 1)
                 {
-                    total += expected[i][1].length;
+                    total += expected[i][1].length * rounds;
                 }
 
                 if (total === 0)
@@ -1399,12 +1404,12 @@ module.exports = function (description, connect_and_accept)
 
                             if (info.single)
                             {
-                                if (results_single.has(info.topic))
+                                if (!results_single.has(info.topic))
                                 {
-                                    cb(new Error('single called twice'));
+                                    results_single.set(info.topic, new Set());
                                 }
 
-                                results_single.set(info.topic, 't' + (n + 1));
+                                results_single.get(info.topic).add('t' + (n + 1));
                                 count_single += 1;
                             }
                             else
@@ -1418,7 +1423,8 @@ module.exports = function (description, connect_and_accept)
                                 count += 1;
                             }
 
-                            if ((count === total) && (count_single === expected_single.size))
+                            if ((count === total) &&
+                                (count_single === expected_single.size * rounds))
                             {
                                 for (var t in results)
                                 {
@@ -1434,7 +1440,10 @@ module.exports = function (description, connect_and_accept)
 
                                 results_single.forEach(function (v, k)
                                 {
-                                    expect(expected_single.get(k).has(v)).to.equal(true);
+                                    v.forEach(function (w)
+                                    {
+                                        expect(expected_single.get(k).has(w)).to.equal(true);
+                                    });
                                 });
 
                                 cb();
@@ -1458,26 +1467,29 @@ module.exports = function (description, connect_and_accept)
                     {
                         if (err) { return cb(err); }
 
-                        async.times(expected.length, function (i, cb3)
+                        async.timesLimit(rounds, num_mqs * 5, function (x, cb3)
                         {
-                            var entry = expected[i];
+                            async.times(expected.length, function (i, cb4)
+                            {
+                                var entry = expected[i];
 
-                            async.parallel(
-                            [
-                                function (cb4)
-                                {
-                                    mqs[i % num_mqs].client.publish(
-                                            entry[0],
-                                            cb4).end(entry[0]);
-                                },
-                                function (cb4)
-                                {
-                                    mqs[i % num_mqs].client.publish(
-                                            entry[0],
-                                            { single: true },
-                                            cb4).end(entry[0]);
-                                }
-                            ], cb3);
+                                async.parallel(
+                                [
+                                    function (cb5)
+                                    {
+                                        mqs[i % num_mqs].client.publish(
+                                                entry[0],
+                                                cb5).end(entry[0]);
+                                    },
+                                    function (cb5)
+                                    {
+                                        mqs[i % num_mqs].client.publish(
+                                                entry[0],
+                                                { single: true },
+                                                cb5).end(entry[0]);
+                                    }
+                                ], cb4);
+                            }, cb3);
                         }, function (err)
                         {
                             if (err) { return cb(err); }
@@ -1497,12 +1509,19 @@ module.exports = function (description, connect_and_accept)
         });
     }
 
+    function rabbitmq_topic_tests2(d, expected, rounds, f)
+    {
+        rabbitmq_topic_tests3(d, 1, expected, rounds, f);
+        rabbitmq_topic_tests3(d, 2, expected, rounds, f);
+        rabbitmq_topic_tests3(d, 10, expected, rounds, f);
+        rabbitmq_topic_tests3(d, 26, expected, rounds, f);
+    }
+
     function rabbitmq_topic_tests(d, expected, f)
     {
-        rabbitmq_topic_tests2(d, 1, expected, f);
-        rabbitmq_topic_tests2(d, 2, expected, f);
-        rabbitmq_topic_tests2(d, 10, expected, f);
-        rabbitmq_topic_tests2(d, 26, expected, f);
+        rabbitmq_topic_tests2(d, expected, 1, f);
+        rabbitmq_topic_tests2(d, expected, 10, f);
+        rabbitmq_topic_tests2(d, expected, 50, f);
     }
 
     rabbitmq_topic_tests('before remove', rabbitmq_bindings.expected_results_before_remove);
@@ -1536,9 +1555,6 @@ module.exports = function (description, connect_and_accept)
             mq.client.unsubscribe(cb);
         }, cb);
     });
-
-    // rabbitmq
-    //     multiple rounds
 
     // start with single server, do multi-process server later (clustered?)
 };
