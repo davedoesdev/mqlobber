@@ -22,8 +22,9 @@ RightDuplex.prototype._read = function ()
 {
     if (this._cb)
     {
-        this._cb();
+        var cb = this.cb;
         this._cb = null;
+        cb();
     }
 };
 
@@ -35,7 +36,7 @@ RightDuplex.prototype._write = function (chunk, encoding, cb)
     }
     else
     {
-        this._cb = cb;
+        this.left._cb = cb;
     }
 };
 
@@ -55,8 +56,9 @@ LeftDuplex.prototype._read = function ()
 {
     if (this._cb)
     {
-        this._cb();
+        var cb = this._cb;
         this._cb = null;
+        cb();
     }
 };
 
@@ -68,7 +70,7 @@ LeftDuplex.prototype._write = function (chunk, encoding, cb)
     }
     else
     {
-        this._cb = cb;
+        this.right._cb = cb;
     }
 };
 

@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~2.0.2",
+    "bpmux": "~2.0.4",
     "qlobber": "~0.7.0"
   },
   "devDependencies": {
@@ -47,10 +47,11 @@
     "chai": "~3.5.0",
     "istanbul": "~0.4.3",
     "coveralls": "~2.11.9",
-    "qlobber-fsq": "3.0.1",
+    "qlobber-fsq": "3.0.3",
     "async": "~1.5.2",
     "rimraf": "~2.5.2",
-    "sinon": "~1.17.4"
+    "sinon": "~1.17.4",
+    "fastest-writable": "~0.0.5"
   },
   "engines": {
     "node": ">=0.12"

@@ -13,6 +13,7 @@ var stream = require('stream'),
     chai = require('chai'),
     expect = chai.expect,
     sinon = require('sinon'),
+    FastestWritable = require('fastest-writable').FastestWritable,
     rabbitmq_bindings = require('./rabbitmq_bindings');
 
 function read_all(s, cb)
@@ -35,6 +36,17 @@ function read_all(s, cb)
     });
 }
 
+function NullStream()
+{
+    stream.Writable.call(this);
+}
+
+util.inherits(NullStream, stream.Writable)
+
+NullStream.prototype._write = function ()
+{
+};
+
 function topic_sort(a, b)
 {
     return parseInt(a.substr(1), 10) - parseInt(b.substr(1), 10);
@@ -42,7 +54,9 @@ function topic_sort(a, b)
 
 var timeout = 10 * 60;
 
-module.exports = function (description, connect_and_accept)
+module.exports = function (type, connect_and_accept)
+{
+describe(type, function ()
 {
     function with_mqs(n, description, f, mqit, options)
     {
@@ -60,11 +74,11 @@ module.exports = function (description, connect_and_accept)
             {
                 this.timeout(timeout * 1000);
 
-                fsq = new QlobberFSQ(
+                fsq = new QlobberFSQ(util._extend(
                 {
                     multi_ttl: timeout * 1000,
                     single_ttl: timeout * 2 * 1000
-                });
+                }, options));
 
                 fsq.on('start', function ()
                 {
@@ -144,7 +158,7 @@ module.exports = function (description, connect_and_accept)
             });
         });
     }
-/*
+
     with_mqs(1, 'should publish and receive a message on single stream',
     function (mqs, cb)
     {
@@ -1141,7 +1155,6 @@ module.exports = function (description, connect_and_accept)
         }
     });
 
-
     with_mqs(1, 'should emit a message event when fsq gives it a message', function (mqs, cb)
     {
         mqs[0].server.on('message', function (data, info, multiplex)
@@ -1334,7 +1347,7 @@ module.exports = function (description, connect_and_accept)
         expect(mqs[0].server._subs.has('foo')).to.equal(false);
         mqs[0].server.unsubscribe('foo', cb);
     });
-*/
+
     function rabbitmq_topic_tests3(d, topics_per_mq, expected, rounds, f)
     {
         var num_mqs = Math.ceil(rabbitmq_bindings.test_bindings.length / topics_per_mq),
@@ -1365,7 +1378,7 @@ module.exports = function (description, connect_and_accept)
             with_mqs(num_mqs, 'should match topics correctly',
             function (mqs, cb)
             {
-                this.timeout(5 * 1000);
+                this.timeout(10 * 1000);
 
                 var results = {},
                     results_single = new Map(),
@@ -1556,23 +1569,264 @@ module.exports = function (description, connect_and_accept)
         }, cb);
     });
 
-    // start with single server, do multi-process server later (clustered?)
+    with_mqs(2, 'server should support setting custom data on message info and stream',
+    function (mqs, cb)
+    {
+        this.timeout(4000);
+
+        var message0_called = false,
+            message1_called = false,
+            laggard0_called = false,
+            laggard1_called = false,
+            buf = new Buffer(100 * 1024);
+
+        buf.fill('a');
+
+        function check(msg_stream, info, duplex)
+        {
+            expect(info.topic).to.equal('foo');
+            expect(msg_stream.fastest_writable === undefined).to.equal(info.count === 0 ? true : false);
+            info.count += 1;
+
+            if (!msg_stream.fastest_writable)
+            {
+                msg_stream.fastest_writable = new FastestWritable(
+                {
+                    emit_laggard: true
+                });
+                msg_stream.pipe(msg_stream.fastest_writable);
+            }
+
+            msg_stream.fastest_writable.add_peer(duplex);
+
+            if (info.count === info.num_handlers)
+            {
+                // make fastest_writable enter waiting state
+                msg_stream.fastest_writable.write(buf);
+            }
+        }
+
+        mqs[0].server.on('message', function (msg_stream, info, multiplex)
+        {
+            expect(message0_called).to.equal(false);
+            message0_called = true;
+            var duplex = multiplex();
+            check(msg_stream, info, duplex);
+            duplex.on('laggard', function ()
+            {
+                laggard0_called = true;
+            });
+        });
+
+        mqs[1].server.on('message', function (msg_stream, info, multiplex)
+        {
+            expect(message1_called).to.equal(false);
+            message1_called = true;
+            var null_stream = new NullStream();
+            null_stream.on('laggard', function ()
+            {
+                laggard1_called = true;
+            });
+            check(msg_stream, info, null_stream);
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal(buf.toString() + 'bar');
+                setTimeout(function ()
+                {
+                    expect(laggard0_called).to.equal(false);
+                    expect(laggard1_called).to.equal(true);
+                    cb();
+                }, 2000);
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[1].client.subscribe('#', function (s, info)
+            {
+                cb(new Error('should not be called'));
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.publish('foo').end('bar');
+            });
+        });
+    }, it,
+    {
+        filter: function (info, handlers, cb)
+        {
+            info.num_handlers = handlers.size;
+            info.count = 0;
+            cb(null, true, handlers);
+        }
+    });
+
+    with_mqs(2, 'server should support delaying message until all streams are under high-water mark',
+    function (mqs, cb)
+    {
+        this.timeout(60 * 1000);
+
+        mqs[0].client.subscribe('bar', function ()
+        {
+            // don't read so carrier is backed up
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('hello');
+            // problem is we won't release the caller - it's waiting on
+            // stream end
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[1].client.subscribe('foo', function (s)
+            {
+                read_all(s, function (v)
+                {
+                    console.log(v);
+                });
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.publish('bar', function (err)
+                {
+                    if (err) { return cb(err); }
+                }).end(new Buffer(32 * 1024));
+            });
+        });
+    }, it.only,
+    {
+        filter: function (info, handlers, cb)
+        {
+        console.log(info);
+        return cb(null, true, handlers);
+            for (var h of handlers)
+            {
+                console.log(h.mqlobber_stream._writableState.length);
+                /*if (h.mqlobber_stream &&
+                    (h.mqlobber_stream._writableState.length >=
+                     h.mqlobber_stream._writableState.highWaterMark))
+                {
+                    return cb(null, false);
+                }*/
+            }
+
+
+
+
+            //info.num_handlers = handlers.size;
+            //info.count = 0;
+            //cb(null, true, handlers);
+            cb(null, false);
+        }
+    });
+
+    with_mqs(1, 'server should warn about unexpected data', function (mqs, cb)
+    {
+        var duplex;
+
+        mqs[0].server.on('warning', function (err, obj)
+        {
+            expect(err.message).to.equal('unexpected data');
+            expect(obj).to.be.an.instanceof(stream.Duplex);
+            expect(obj).to.equal(duplex);
+            cb();
+        });
+
+        mqs[0].server.on('message', function (data, info, multiplex)
+        {
+            duplex = multiplex();
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            data.pipe(duplex);
+        });
+
+        mqs[0].client.subscribe('foo', function (s)
+        {
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+
+            var listeners = mqs[0].client._mux.listeners('handshake');
+            listeners.unshift(function (duplex, hdata, delay)
+            {
+                if (!delay)
+                {
+                    return;
+                }
+
+                duplex.write('a');
+            });
+
+            mqs[0].client._mux.removeAllListeners('handshake');
+
+            for (var l of listeners)
+            {
+                mqs[0].client._mux.on('handshake', l);
+            }
+
+            mqs[0].client.publish('foo').end('bar');
+        });
+    });
+
+    with_mqs(1, 'client should warn about unexpected data', function (mqs, cb)
+    {
+        var count = 0;
+
+        mqs[0].client.on('warning', function (err, obj)
+        {
+            expect(err.message).to.equal('unexpected data');
+            expect(obj).to.be.an.instanceof(stream.Duplex);
+            count += 1;
+            if (count === 3)
+            {
+                cb();
+            } else if (count > 3)
+            {
+                cb(new Error('called too many times'));
+            }
+        });
+
+        var listeners = mqs[0].server._mux.listeners('handshake');
+        listeners.unshift(function (duplex, hdata, delay)
+        {
+            if (!delay)
+            {
+                return;
+            }
+
+            duplex.write('a');
+        });
+
+        mqs[0].server._mux.removeAllListeners('handshake');
+
+        for (var l of listeners)
+        {
+            mqs[0].server._mux.on('handshake', l);
+        }
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.unsubscribe(function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.publish('foo', function (err)
+                {
+                    if (err) { return cb(err); }
+                }).end('bar');
+            });
+        });
+    });
+});
 };
 
 /*
-test fastest-writable:
-
-mq_server.on('message', function (msg_stream, dest, info)
-{
-    if (!msg_stream.fastest_writable)
-    {
-        msg_stream.fastest_writable = new FastestWritable();
-        msg_stream.pipe(msg_stream.fastest_writable);
-    }
-
-    msg_stream.add_peer(dest);
-});
-
 test filter_all_drained:
 
 function filter_all_drained(info, handlers, cb)

@@ -13,10 +13,17 @@ module.exports = function (grunt)
         },
 
         mochaTest: {
-            src: [ 'test/in-mem.js' ],
+            src: [ 'test/in-mem.js', 'test/tcp.js' ],
             options: {
                 bail: true
             }
+        },
+
+        apidox: {
+            input: [ 'lib/client.js', 'lib/server.js' ],
+            output: 'README.md',
+            fullSourceDescription: true,
+            extraHeadingLevels: 1
         },
 
         shell: {
@@ -38,9 +45,11 @@ module.exports = function (grunt)
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-mocha-test');
     grunt.loadNpmTasks('grunt-shell');
+    grunt.loadNpmTasks('grunt-apidox');
 
     grunt.registerTask('lint', 'jshint');
     grunt.registerTask('test', 'mochaTest');
+    grunt.registerTask('docs', ['apidox']);
     grunt.registerTask('coverage', ['shell:cover', 'shell:check_cover']);
     grunt.registerTask('coveralls', 'shell:coveralls');
     grunt.registerTask('default', ['lint', 'test']);
