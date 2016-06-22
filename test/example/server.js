@@ -1,5 +1,5 @@
 var net = require('net'),
-	QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
+    QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
     MQlobberServer = require('mqlobber').MQlobberServer,
     fsq = new QlobberFSQ();
 
@@ -15,15 +15,24 @@ fsq.on('start', function ()
     {
         c.on('end', function ()
         {
-            process.send('disconnect');
+            if (process.send)
+            {
+                process.send('disconnect');
+            }
         });
 
-        process.send('connect');
+        if (process.send)
+        {
+            process.send('connect');
+        }
     });
 
     server.on('listening', function ()
     {
-        process.send('listening');
+        if (process.send)
+        {
+            process.send('listening');
+        }
     });
 
     process.on('message', function ()

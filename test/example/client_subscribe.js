@@ -1,11 +1,11 @@
 var assert = require('assert'),
     MQlobberClient = require('mqlobber').MQlobberClient,
     c = require('net').createConnection(parseInt(process.argv[2])),
-    mq = new MQlobberClient(c);
+    mq = new MQlobberClient(c),
+    topic = process.argv[3];
 
-mq.subscribe('foo.bar', function (s, info)
+mq.subscribe(topic, function (s, info)
 {
-    assert.equal(info.topic, 'foo.bar');
     var msg = '';
     s.on('readable', function ()
     {
@@ -23,6 +23,12 @@ mq.subscribe('foo.bar', function (s, info)
     });
 }
 //--------------------
-, function () { process.send('subscribed'); }
+, function ()
+{
+    if (process.send)
+    {
+        process.send('subscribed');
+    }
+}
 //--------------------
 );

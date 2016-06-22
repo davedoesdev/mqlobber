@@ -35,11 +35,11 @@ async.times(2, function (n, next)
 {
     servers = svrs;
 
-    cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port]).on('message', function ()
+    cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port, 'foo.bar']).on('message', function ()
     {
-        cp.fork(path.join(__dirname, 'client_wildcard_subscribe.js'), [8601]).on('message', function ()
+        cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port + 1, 'foo.*']).on('message', function ()
         {
-            cp.fork(path.join(__dirname, 'client_publish.js'), [base_port]);
+            cp.fork(path.join(__dirname, 'client_publish.js'), [base_port, 'foo.bar']);
         })
     });
 });

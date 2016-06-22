@@ -31,11 +31,118 @@ You can scale out horizontally by creating a number of `QlobberFSQ` instances
 
 No other backend services are required - just Node and a filesystem.
 
+The API is described [here](#tableofcontents).
+
 ## Example
 
+First, let's create a server program which listens on a TCP port specified on
+the command line:
+
+```javascript
+// server.js
+var net = require('net'),
+    QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
+    MQlobberServer = require('mqlobber').MQlobberServer,
+    fsq = new QlobberFSQ();
+
+fsq.on('start', function ()
+{
+    var server = net.createServer().listen(parseInt(process.argv[2]));
+    server.on('connection', function (c)
+    {
+        new MQlobberServer(fsq, c);
+    });
+});
+```
+
+Next, a program which connects to the server and subscribes to messages
+published to a topic:
+
+```javascript
+// client_subscribe.js
+var assert = require('assert'),
+    MQlobberClient = require('mqlobber').MQlobberClient,
+    c = require('net').createConnection(parseInt(process.argv[2])),
+    mq = new MQlobberClient(c),
+    topic = process.argv[3];
+
+mq.subscribe(topic, function (s, info)
+{
+    var msg = '';
+    s.on('readable', function ()
+    {
+        var data;
+        while ((data = this.read()) !== null)
+        {
+            msg += data.toString();
+        }
+    });
+    s.on('end', function ()
+    {
+        console.log('received', info.topic, msg);
+        assert.equal(msg, 'hello');
+        c.end();
+    });
+});
+```
+
+Finally, a program which connects to the server and publishes a message to a
+topic:
+
+```javascript
+// client_publish.js
+var MQlobberClient = require('mqlobber').MQlobberClient,
+    c = require('net').createConnection(parseInt(process.argv[2])),
+    mq = new MQlobberClient(c);
+
+mq.publish(process.argv[3], function ()
+{
+    c.end();
+}).end('hello');
+```
+
+Run two servers listening on ports 8600 and 8601:
+
+```shell
+node server.js 8600 &
+node server.js 8601 &
+```
+
+Subscribe to two topics, `foo.bar` and wildcard topic `foo.*`, one against each
+server:
+
+```shell
+node client_subscribe.js 8600 foo.bar &
+node client_subscribe.js 8601 'foo.*' &
+```
+
+Then publish a message to the topic `foo.bar`:
+
+```shell
+node client_publish.js 8600 foo.bar
+```
+
+You should see the following output, one line from each subscriber:
+
+```
+received foo.bar hello
+received foo.bar hello
+```
+
+Only the servers should still be running and you can now terminate them:
+
+```shell
+$ jobs
+[1]-  Running                 node server.js 8600 &
+[2]+  Running                 node server.js 8601 &
+$ kill %1 %2
+[1]-  Terminated              node server.js 8600
+[2]+  Terminated              node server.js 8601
+```
 
 
-example
+
+
 
 
 
