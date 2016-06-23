@@ -1,3 +1,5 @@
+/*jshint laxcomma: true */
+//--------------------
 var assert = require('assert'),
     MQlobberClient = require('mqlobber').MQlobberClient,
     c = require('net').createConnection(parseInt(process.argv[2])),

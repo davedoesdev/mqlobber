@@ -5,7 +5,7 @@ module.exports = function (grunt)
     grunt.initConfig(
     {
         jshint: {
-            src: [ 'index.js', 'Gruntfile.js', 'lib/*.js', 'test/*.js' ],
+            src: [ 'index.js', 'Gruntfile.js', 'lib/*.js', 'test/**/*.js' ],
             options: {
                 node: true,
                 esversion: 6
@@ -13,7 +13,7 @@ module.exports = function (grunt)
         },
 
         mochaTest: {
-            src: [ 'test/in-mem.js', 'test/tcp.js' ],
+            src: [ 'test/in-mem.js', 'test/tcp.js', 'test/example/example.js' ],
             options: {
                 bail: true
             }

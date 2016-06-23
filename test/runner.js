@@ -41,7 +41,7 @@ function NullStream()
     stream.Writable.call(this);
 }
 
-util.inherits(NullStream, stream.Writable)
+util.inherits(NullStream, stream.Writable);
 
 NullStream.prototype._write = function ()
 {
@@ -1361,7 +1361,7 @@ describe(type, function ()
 
             for (var t of entry[1])
             {
-                var t2 = 't' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1)
+                var t2 = 't' + (Math.floor((parseInt(t.substr(1), 10) - 1) / topics_per_mq) + 1);
 
                 for (var i = 0; i < rounds; i += 1)
                 {
