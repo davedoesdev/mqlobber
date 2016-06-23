@@ -140,36 +140,39 @@ $ kill %1 %2
 [2]+  Terminated              node server.js 8601
 ```
 
+## Installation
 
+```shell
+npm install mqlobber
+```
 
+## Licence
 
+[MIT](LICENCE)
 
+## Test
 
+```shell
+grunt test
+```
 
-Take:
+## Lint
 
-- stream
-- optional handshake data for the control channel
+```shell
+grunt lint
+```
 
-Exposes:
+## Code Coverage
 
-- subscribe (topic, handler)
-- unsubscribe (topic, handler)
-- publish (topic, payload, options)
-- events:
-    - handshake
+```shell
+grunt converage
+```
 
-Need to remember all active subscriptions so:
+[Instanbul](http://gotwarlost.github.io/istanbul/) results are available [here](http://rawgit.davedoes.com/davedoesdev/mqlobber/master/coverage/lcov-report/index.html).
 
-- don't send subscribe message if already subscribed
-- can remove when unsubscribe all
+Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 
-We're going to need our own QlobberDedup to put our handlers on:
-
-- We'll just get a topic back from the server
-- Need to get list of handlers to call for the topic
-
-This needs to be usable in browser.
+#API
 
 <a name="tableofcontents"></a>
 
