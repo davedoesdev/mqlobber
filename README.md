@@ -179,6 +179,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberclientstream-options"></a>[MQlobberClient](#mqlobberclientstream-options)
 - <a name="toc_mqlobberclientprototypesubscribetopic-handler-cb"></a><a name="toc_mqlobberclientprototype"></a>[MQlobberClient.prototype.subscribe](#mqlobberclientprototypesubscribetopic-handler-cb)
 - <a name="toc_mqlobberclientprototypeunsubscribetopic-handler-cb"></a>[MQlobberClient.prototype.unsubscribe](#mqlobberclientprototypeunsubscribetopic-handler-cb)
+- <a name="toc_mqlobberclientprototypepublishtopic-options-cb"></a>[MQlobberClient.prototype.publish](#mqlobberclientprototypepublishtopic-options-cb)
 
 ## MQlobberClient(stream, [options])
 
@@ -229,7 +230,7 @@ the following arguments:
   - `{Object} info` Metadata for the message, with the following properties:
 
     - `{String} topic` Topic to which the message was published.
-    - `{Boolean} single` Whether this message is being given to at most one 
+    - `{Boolean} single` Whether this message is being given to _at most_ one 
       handler (across all clients connected to all servers).
     - `{Integer} expires` When the message expires (number of seconds after
       1 January 1970 00:00:00 UTC).
@@ -256,7 +257,34 @@ If you subscribed `handler` to a different topic then it will still be called
 for messages which match that topic. If `handler` is undefined, all handlers for
 the topic `topic` are unsubscribed.
 
-- `{Function]} [cb]` Optional function to call once `handler` has been unsubscribed from `topic`. This will be passed the following argument:
+- `{Function]} [cb]` Optional function to call once `handler` has been unsubscribed from `topic` on the server. This will be passed the following
+argument:
+
+  - `{Object} err` If an error occurred then details of the error, otherwise `null`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
+
+## MQlobberClient.prototype.publish(topic, [options], [cb])
+
+> Publish a message to the server for interested clients to receive.
+
+**Parameters:**
+
+- `{String} topic` Message topic. The topic should be a series of words separated by `.` (or whatever you configured [`QlobberFSQ`](#qlobberfsqoptions)
+with on the server).
+
+- `{Object} [options]` Optional settings for this publication: 
+  - `{Boolean} single` If `true` then the message will be given to _at most_
+    one handler (across all clients connected to all servers). If you don't
+    specify this then all interested handlers (across all clients).
+
+  - `{Integer} ttl` Time-to-live (in seconds) for this message. If you don't
+    specify this then the default is taken from the
+    [`QlobberFSQ`](#qlobberfsqoptions) instance on the server. In any case,
+    `QobberFSQ`'s configured time-to-live is used to constrain `ttl`'s
+    maximum value.
+    
+- `{Function]} [cb]` Optional function to call once the server has published the message. This will be passed the following argument:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
