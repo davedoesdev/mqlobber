@@ -182,6 +182,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberclientprototypepublishtopic-options-cb"></a>[MQlobberClient.prototype.publish](#mqlobberclientprototypepublishtopic-options-cb)
 - <a name="toc_mqlobberserverfsq-stream-options"></a>[MQlobberServer](#mqlobberserverfsq-stream-options)
 - <a name="toc_mqlobberserverprototypesubscribetopic-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-cb)
+- <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
 
 ## MQlobberClient(stream, [options])
 
@@ -251,15 +252,14 @@ the following arguments:
 
 **Parameters:**
 
-- `{String} [topic]` Which messages you're no longer interested in receiving via the `handler` function. This should be a topic you've previously passed to
-[`subscribe`](#mqlobberprototypesubscribetopic-handler-cb). If topic is
-`undefined` then all handlers for all topics are unsubscribed.
+- `{String} [topic]` Which messages you're no longer interested in receiving via the `handler` function. If topic is `undefined` then all handlers for all
+topics are unsubscribed.
 
 - `{Function} [handler]` The function you no longer want to be called with messages published to the topic `topic`. This should be a function you've
 previously passed to [`subscribe`](#mqlobberprototypesubscribetopic-handler-cb).
 If you subscribed `handler` to a different topic then it will still be called
-for messages which match that topic. If `handler` is undefined, all handlers for
-the topic `topic` are unsubscribed.
+for messages which match that topic. If `handler` is `undefined`, all handlers
+for the topic `topic` are unsubscribed.
 
 - `{Function]} [cb]` Optional function to call once `handler` has been unsubscribed from `topic` on the server. This will be passed the following
 argument:
@@ -333,6 +333,20 @@ exactly one word in a topic or `#` to match zero or more words. For example,
 They can be changed when [constructing the `QlobberFSQ` instance]
 (https://github.com/davedoesdev/qlobber#qlobberoptions) passed to
 [`MQlobberServer`](#mqlobberserver)'s constructor.
+
+- `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
+
+  - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.prototype](#toc_mqlobberserverprototype)</sub>
+
+## MQlobberServer.prototype.unsubscribe([topic], [cb])
+
+> Unsubscribe the connected client from messages.
+
+**Parameters:**
+
+- `{String} [topic]` Which messages the client should no longer receive. If topic is `undefined` then the client will receive no more messages.
 
 - `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
 

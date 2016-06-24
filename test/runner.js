@@ -843,7 +843,7 @@ describe(type, function ()
 
         // number will change if bpmux handhsake buffer size changes
 
-        mqs[0].client.on('full', function ()
+        mqs[0].client.on('backoff', function ()
         {
             expect(count_complete).to.equal(2992);
             expect(count_incomplete).to.equal(0); // only counted below
@@ -1115,7 +1115,7 @@ describe(type, function ()
 
         // number will change if bpmux handhsake buffer size changes
 
-        mqs[0].server.on('full', function ()
+        mqs[0].server.on('backoff', function ()
         {
             expect(count_complete).to.equal(2517);
             expect(count_incomplete).to.equal(0); // only counted below
