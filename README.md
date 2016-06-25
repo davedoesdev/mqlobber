@@ -180,6 +180,10 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberclientprototypesubscribetopic-handler-cb"></a><a name="toc_mqlobberclientprototype"></a>[MQlobberClient.prototype.subscribe](#mqlobberclientprototypesubscribetopic-handler-cb)
 - <a name="toc_mqlobberclientprototypeunsubscribetopic-handler-cb"></a>[MQlobberClient.prototype.unsubscribe](#mqlobberclientprototypeunsubscribetopic-handler-cb)
 - <a name="toc_mqlobberclientprototypepublishtopic-options-cb"></a>[MQlobberClient.prototype.publish](#mqlobberclientprototypepublishtopic-options-cb)
+- <a name="toc_mqlobberclienteventshandshakehandshake_data"></a><a name="toc_mqlobberclientevents"></a>[MQlobberClient.events.handshake](#mqlobberclienteventshandshakehandshake_data)
+- <a name="toc_mqlobberclienteventsbackoff"></a>[MQlobberClient.events.backoff](#mqlobberclienteventsbackoff)
+- <a name="toc_mqlobberclienteventserrorerr-obj"></a>[MQlobberClient.events.error](#mqlobberclienteventserrorerr-obj)
+- <a name="toc_mqlobberclienteventswarningerr-obj"></a>[MQlobberClient.events.warning](#mqlobberclienteventswarningerr-obj)
 - <a name="toc_mqlobberserverfsq-stream-options"></a>[MQlobberServer](#mqlobberserverfsq-stream-options)
 - <a name="toc_mqlobberserverprototypesubscribetopic-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-cb)
 - <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
@@ -293,6 +297,66 @@ with on the server).
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
+
+<a name="mqlobberclientevents"></a>
+
+## MQlobberClient.events.handshake(handshake_data)
+
+> `handshake` event
+
+Emitted by a `MQlobberClient` object after it successfully completes an initial
+handshake with its peer `MQlobberServer` object on the server.
+
+**Parameters:**
+
+- `{Buffer} handshake_data` Application-specific data which the `MQlobberServer` object sent along with the handshake.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.backoff()
+
+> `backoff` event
+
+Emitted by a `MQlobberClient` object when it delays a request to the server
+because the connection is at full capacity. If you want to avoid buffering
+further requests, don't call [`subscribe`](#mqlobberclientsubscribe),
+[`unsubscribe`](#mqlobberclientunsubscribe) and
+[`publish`](#mqlobberclientpublish) until the connection `Duplex` emits a
+[`drain`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_event_drain) event.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.error(err, obj)
+
+> `error` event
+
+Emitted by a `MQlobberClient` object if an error is emitted by the multiplexing
+layer ([`bpmux`](https://github.com/davedoesdev/bpmux)), preventing proper
+communication with the server.
+
+**Parameters:**
+
+- `{Object} err` The error that occurred. 
+- `{Object} obj` The object on which the error occurred.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.warning(err, obj)
+
+> `warning` event
+
+Emmited by a `MQlobberClient` object when a recoverable error occurs. This will
+usually be due to an error on an individual request or multiplexed stream.
+
+Note that if there are no `warning` event listeners registered then the error
+will be displayed using `console.error`.
+
+**Parameters:**
+
+- `{Object} err` The error that occurred. 
+- `{Object} obj` The object on which the error occurred.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
 
 ## MQlobberServer(fsq, stream, [options])
 

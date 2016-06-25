@@ -20,7 +20,10 @@ module.exports = function (grunt)
         },
 
         apidox: {
-            input: [ 'lib/client.js', 'lib/server.js', 'lib/events_doc.js'],
+            input: [ 'lib/client.js',
+                     'lib/client_events_doc.js',
+                     'lib/server.js',
+                     'lib/server_events_doc.js'],
             output: 'README.md',
             fullSourceDescription: true,
             extraHeadingLevels: 1
