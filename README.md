@@ -188,6 +188,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberserverprototypesubscribetopic-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-cb)
 - <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
 - <a name="toc_mqlobberservereventssubscribe_requestedtopic-cb"></a><a name="toc_mqlobberserverevents"></a>[MQlobberServer.events.subscribe_requested](#mqlobberservereventssubscribe_requestedtopic-cb)
+- <a name="toc_mqlobberservereventsunsubscribe_requestedtopic-cb"></a>[MQlobberServer.events.unsubscribe_requested](#mqlobberservereventsunsubscribe_requestedtopic-cb)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
 - <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
@@ -445,6 +446,31 @@ opportunity to filter subscription requests in the application.
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`subscribe`](#mqlobberserver_subscribe) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.unsubscribe_requested(topic, cb)
+
+> `unsubscribe_requested` event
+
+Emitted by a `MQlobberServer` object when it receives a request from its peer
+`MQlobberClient` object to unsubscribe from messages published to a topic.
+
+If there are no listeners on this event, the default action is to call
+[`unsubscribe(topic, cb)`](#mqlobberserver_unsubscribe). If you add a listener
+on this event, the default action will _not_ be called. This gives you the
+opportunity to filter unsubscription requestions in the application.
+
+**Parameters:**
+
+- `{String} topic` The topic from which the client is asking to unsubscribe. 
+- `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
+[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It take a single
+argument:
+
+  - `{Object} err` If `null` then a success status is returned to the client
+    (whether you called [`unsubscribe`](#mqlobberserver_unsubscribe) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
