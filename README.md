@@ -187,8 +187,11 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberserverfsq-stream-options"></a>[MQlobberServer](#mqlobberserverfsq-stream-options)
 - <a name="toc_mqlobberserverprototypesubscribetopic-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-cb)
 - <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
-- <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a><a name="toc_mqlobberserverevents"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
+- <a name="toc_mqlobberservereventssubscribe_requestedtopic-cb"></a><a name="toc_mqlobberserverevents"></a>[MQlobberServer.events.subscribe_requested](#mqlobberservereventssubscribe_requestedtopic-cb)
+- <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
+- <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
+- <a name="toc_mqlobberservereventswarningerr-obj"></a>[MQlobberServer.events.warning](#mqlobberservereventswarningerr-obj)
 
 ## MQlobberClient(stream, [options])
 
@@ -422,6 +425,30 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
 <a name="mqlobberserverevents"></a>
 
+## MQlobberServer.events.subscribe_requested(topic, cb)
+
+> `subscribe_requested` event
+
+Emitted by a `MQlobberServer` object when it receives a request from its peer
+`MQlobberClient` object to subscribe to messages published to a topic.
+
+If there are no listeners on this event, the default action is to call
+[`subscribe(topic, cb)`](#mqlobberserver_subscribe). If you add a listener on
+this event, the default action will _not_ be called. This gives you the
+opportunity to filter subscription requests in the application.
+
+**Parameters:**
+
+- `{String} topic` The topic to which the client is asking to subscribe. 
+- `{Function} cb` Function to call after processing the subscription request. This function _must_ be called even if you don't call
+[`subscribe`](#mqlobberserver_subscribe) yourself. It takes a single argument:
+
+  - `{Object} err` If `null` then a success status is returned to the client
+    (whether you called [`subscribe`](#mqlobberserver_subscribe) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
 ## MQlobberServer.events.handshake(handshake_data, delay_handshake)
 
 > `handshake` event
@@ -464,6 +491,38 @@ sent to the client until the connection emits a `drain` event.
 
 Depending on your application, you might also terminate the connection if it
 can't keep up.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.error(err, obj)
+
+> `error` event
+
+Emitted by a `MQlobberServer` object if an error is emitted by the multiplexing
+layer ([`bpmux`](https://github.com/davedoesdev/bpmux)), preventing proper
+communication with the client.
+
+**Parameters:**
+
+- `{Object} err` The error that occurred. 
+- `{Object} obj` The object on which the error occurred.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.warning(err, obj)
+
+> `warning` event
+
+Emmited by a `MQlobberServer` object when a recoverable error occurs. This will
+usually be due to an error on an individual request or multiplexed stream.
+
+Note that if there are no `warning` event listeners registered then the error
+will be displayed using `console.error`.
+
+**Parameters:**
+
+- `{Object} err` The error that occurred. 
+- `{Object} obj` The object on which the error occurred.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
