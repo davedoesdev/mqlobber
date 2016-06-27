@@ -189,6 +189,8 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
 - <a name="toc_mqlobberservereventssubscribe_requestedtopic-cb"></a><a name="toc_mqlobberserverevents"></a>[MQlobberServer.events.subscribe_requested](#mqlobberservereventssubscribe_requestedtopic-cb)
 - <a name="toc_mqlobberservereventsunsubscribe_requestedtopic-cb"></a>[MQlobberServer.events.unsubscribe_requested](#mqlobberservereventsunsubscribe_requestedtopic-cb)
+- <a name="toc_mqlobberservereventsunsubscribe_all_requestedcb"></a>[MQlobberServer.events.unsubscribe_all_requested](#mqlobberservereventsunsubscribe_all_requestedcb)
+- <a name="toc_mqlobberservereventspublish_requestedtopic-stream-options-cb"></a>[MQlobberServer.events.publish_requested](#mqlobberservereventspublish_requestedtopic-stream-options-cb)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
 - <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
@@ -290,7 +292,8 @@ with on the server).
 - `{Object} [options]` Optional settings for this publication: 
   - `{Boolean} single` If `true` then the message will be given to _at most_
     one handler (across all clients connected to all servers). If you don't
-    specify this then all interested handlers (across all clients).
+    specify this then all interested handlers (across all clients) will
+    receive it.
 
   - `{Integer} ttl` Time-to-live (in seconds) for this message. If you don't
     specify this then the default is taken from the
@@ -301,6 +304,11 @@ with on the server).
 - `{Function]} [cb]` Optional function to call once the server has published the message. This will be passed the following argument:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
+
+
+**Return:**
+
+`{Writable}` Stream to which to [write](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_writable_write_chunk_encoding_callback) the message's data. Make sure you [`end`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_writable_end_chunk_encoding_callback) it when you're done.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
 
@@ -460,17 +468,74 @@ Emitted by a `MQlobberServer` object when it receives a request from its peer
 If there are no listeners on this event, the default action is to call
 [`unsubscribe(topic, cb)`](#mqlobberserver_unsubscribe). If you add a listener
 on this event, the default action will _not_ be called. This gives you the
-opportunity to filter unsubscription requestions in the application.
+opportunity to filter unsubscription requests in the application.
 
 **Parameters:**
 
 - `{String} topic` The topic from which the client is asking to unsubscribe. 
 - `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
-[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It take a single
+[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It takes a single
 argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`unsubscribe`](#mqlobberserver_unsubscribe) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.unsubscribe_all_requested(cb)
+
+> `unsubscribe_all_requested` event
+
+Emited by a `MQlobberServer` object when it receives a request from its peer
+`MQlobberClient` object to unsubscribe from all messages published to any topic.
+
+If there are no listeners on this event, the default action is to call
+[`unsubscribe(cb)`](#mqlobberserver_unsubscribe). If you add a listener on this
+event, the default action will _not_ be called. This gives you the opportunity
+to filter unsubscription requests in the application.
+
+**Parameters:**
+
+- `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
+[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It takes a single
+argument:
+
+  - `{Object} err` If `null` then a success status is returned to the client
+    (whether you called [`unsubscribe`](#mqlobberserver_unsubscribe) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.publish_requested(topic, stream, options, cb)
+
+> `publish_requested` event
+
+Emitted by a `MQlobberServer` object when it receives a request from its peer
+`MQlobberClient` object to publish a message to a topic.
+
+If there are no listeners on this event, the default action is to call
+`stream.pipe(fsq.publish(topic, options, cb))`, where `fsq` is the
+[`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)
+instance you passed to `MQlobberServer`'s [constructor](#mqlobberserver_fsqstreamoptions).
+
+**Parameters:**
+
+- `{String} topic` The topic to which the message should be published. 
+- `{Readable} stream` The message data as a [`Readable`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_readable). This is multiplexed over the connection to the client - back-pressure is applied to the sender `MQlobberClient` object according to when you call [`read`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_readable_read_size). 
+- `{Object} options` Optional settings for this publication: 
+  - `{Boolean} single` If `true` then the message should be published to
+    _at most_ one client (across all servers). Otherwise, it should be published
+    to all interested clients.
+    
+  - `{Integer} ttl` Time-to-live (in seconds) for this message.
+  
+- `{Function} cb` Function to call after processing the publication request. This function _must_ be called even if you don't call
+[`publish`](#mqlobberserver_publish) yourself. It takes a single
+argument:
+
+  - `{Object} err` If `null` then a success status is returned to the client
+    (whether you called [`publish`](#mqlobberserver_publish) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
@@ -539,7 +604,7 @@ communication with the client.
 
 > `warning` event
 
-Emmited by a `MQlobberServer` object when a recoverable error occurs. This will
+Emited by a `MQlobberServer` object when a recoverable error occurs. This will
 usually be due to an error on an individual request or multiplexed stream.
 
 Note that if there are no `warning` event listeners registered then the error
