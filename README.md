@@ -191,6 +191,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberservereventsunsubscribe_requestedtopic-cb"></a>[MQlobberServer.events.unsubscribe_requested](#mqlobberservereventsunsubscribe_requestedtopic-cb)
 - <a name="toc_mqlobberservereventsunsubscribe_all_requestedcb"></a>[MQlobberServer.events.unsubscribe_all_requested](#mqlobberservereventsunsubscribe_all_requestedcb)
 - <a name="toc_mqlobberservereventspublish_requestedtopic-stream-options-cb"></a>[MQlobberServer.events.publish_requested](#mqlobberservereventspublish_requestedtopic-stream-options-cb)
+- <a name="toc_mqlobberservereventsmessagestream-info-multiplex"></a>[MQlobberServer.events.message](#mqlobberservereventsmessagestream-info-multiplex)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
 - <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
@@ -249,7 +250,7 @@ the following arguments:
       handler (across all clients connected to all servers).
     - `{Integer} expires` When the message expires (number of seconds after
       1 January 1970 00:00:00 UTC). This is only present if the server's
-      [`QlobberServer`](#qlobberserver) instance is configured with
+      [`MQlobberServer`](#mqlobberserver) instance is configured with
       `send_expires` set to `true`.
 
 - `{Function} [cb]` Optional function to call once the subscription has been registered with the server. This will be passed the following argument:
@@ -537,6 +538,38 @@ argument:
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`publish`](#mqlobberserver_publish) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.message(stream, info, multiplex)
+
+> `message` event
+
+Emitted by a `MQlobberServer` object when its `QlobberFSQ` object passes it a
+message published to a topic its peer `MQlobberClient` object has subscribed to.
+
+If there are no listeners on this event, the default action is to call
+`stream.pipe(multiplex())`.
+
+You can add a listener on this event to insert processing between the message
+stream and the client.
+
+**Parameters:**
+
+- `{Readable} stream` The message content as a [Readable](http://nodejs.org/api/stream.html#stream_class_stream_readable). Note that _all_ subscribers will receive the same stream for each message.
+
+- `{Object} info` Metadata for the message, with the following properties: 
+  - `{String} topic` Topic to which the message was published.
+  - `{Boolean} single` Whether this message is being given to _at most_ one 
+    handler (across all clients connected to all servers).
+  - `{Integer} expires` When the message expires (number of seconds after
+    1 January 1970 00:00:00 UTC). This is only present if the 
+    [`MQlobberServer`](#qlobberserver) object was configured with
+    `send_expires` set to `true`.
+
+- `{Function} multiplex` Function to call in order to multiplex a new stream over the connection to the client. It returns the multiplexed stream, to which
+the data from `stream` should be written - after the application applies
+whatever transforms and processing it requires.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
