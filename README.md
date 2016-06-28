@@ -31,7 +31,7 @@ You can scale out horizontally by creating a number of `QlobberFSQ` instances
 
 No other backend services are required - just Node and a filesystem.
 
-The API is described [here](#tableofcontents).
+The API is described [here](#api).
 
 ## Example
 
@@ -204,9 +204,9 @@ messages via a server.
 
 **Parameters:**
 
-- `{Duplex} stream` Connection to a server. The server should use [`MQlobberServer`](#mqlobberserver) on its side of the connection. How the
-connection is made is up to the caller - it just has to supply a
-[`stream.Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
+- `{Duplex} stream` Connection to a server. The server should use [`MQlobberServer`](#mqlobberserverfsq-stream-options) on its side of the
+connection. How the connection is made is up to the caller - it just has to
+supply a [`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
 
 - `{Object} [options]` Configuration options. This is passed down to [`QlobberDedup`](https://github.com/davedoesdev/qlobber#qlobberdedupoptions)
 (which matches messages received from the server to handlers) and
@@ -215,8 +215,8 @@ connection is made is up to the caller - it just has to supply a
 server). It also supports the following additional property:
 
   - `{Buffer} [handshake_data]` Application-specific handshake data to send to
-    the server. The server-side [`MQlobberServer`](#mqlobberserver) object will
-    emit this as a [`handshake`](#mqlobber_servereventshandshake) event to its
+    the server. The server-side [`MQlobberServer`](#mqlobberserverfsq-stream-options) object will
+    emit this as a [`handshake`](#mqlobberservereventshandshakehandshake_data-delay_handshake) event to its
     application.
 
 <sub>Go: [TOC](#tableofcontents)</sub>
@@ -234,8 +234,8 @@ exactly one word in a topic or `#` to match zero or more words. For example,
 `foo.*` would match `foo.bar` whereas `foo.#` would match `foo`, `foo.bar` and
 `foo.bar.wup`. Note these are the default separator and wildcard characters.
 They can be changed on the server when [constructing the `QlobberFSQ` object]
-(https://github.com/davedoesdev/qlobber#qlobberoptions) passed to
-[`MQlobberServer`](#mqlobberserver).
+(https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) passed to
+[`MQlobberServer`](#mqlobberserverfsq-stream-options).
 
 - `{Function} handler` Function to call when a new message is received from the server due to its topic matching against `topic`. `handler` will be passed
 the following arguments:
@@ -250,12 +250,12 @@ the following arguments:
       handler (across all clients connected to all servers).
     - `{Integer} expires` When the message expires (number of seconds after
       1 January 1970 00:00:00 UTC). This is only present if the server's
-      [`MQlobberServer`](#mqlobberserver) instance is configured with
-      `send_expires` set to `true`.
+      [`MQlobberServer`](#mqlobberserverfsq-stream-options) instance is
+      configured with `send_expires` set to `true`.
 
 - `{Function} [cb]` Optional function to call once the subscription has been registered with the server. This will be passed the following argument:
 
-  - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
+  - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
 
@@ -265,11 +265,11 @@ the following arguments:
 
 **Parameters:**
 
-- `{String} [topic]` Which messages you're no longer interested in receiving via the `handler` function. If topic is `undefined` then all handlers for all
+- `{String} [topic]` Which messages you're no longer interested in receiving via the `handler` function. If `topic` is `undefined` then all handlers for all
 topics are unsubscribed.
 
 - `{Function} [handler]` The function you no longer want to be called with messages published to the topic `topic`. This should be a function you've
-previously passed to [`subscribe`](#mqlobberprototypesubscribetopic-handler-cb).
+previously passed to [`subscribe`](#mqlobberclientprototypesubscribetopic-handler-cb).
 If you subscribed `handler` to a different topic then it will still be called
 for messages which match that topic. If `handler` is `undefined`, all handlers
 for the topic `topic` are unsubscribed.
@@ -287,8 +287,7 @@ argument:
 
 **Parameters:**
 
-- `{String} topic` Message topic. The topic should be a series of words separated by `.` (or whatever you configured [`QlobberFSQ`](#qlobberfsqoptions)
-with on the server).
+- `{String} topic` Message topic. The topic should be a series of words separated by `.` (or whatever you configured [`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) with on the server).
 
 - `{Object} [options]` Optional settings for this publication: 
   - `{Boolean} single` If `true` then the message will be given to _at most_
@@ -298,8 +297,8 @@ with on the server).
 
   - `{Integer} ttl` Time-to-live (in seconds) for this message. If you don't
     specify this then the default is taken from the
-    [`QlobberFSQ`](#qlobberfsqoptions) instance on the server. In any case,
-    `QobberFSQ`'s configured time-to-live is used to constrain `ttl`'s
+    [`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) instance on the server. In any case,
+    `QlobberFSQ`'s configured time-to-live is used to constrain `ttl`'s
     maximum value.
     
 - `{Function]} [cb]` Optional function to call once the server has published the message. This will be passed the following argument:
@@ -334,9 +333,9 @@ handshake with its peer `MQlobberServer` object on the server.
 
 Emitted by a `MQlobberClient` object when it delays a request to the server
 because the connection is at full capacity. If you want to avoid buffering
-further requests, don't call [`subscribe`](#mqlobberclientsubscribe),
-[`unsubscribe`](#mqlobberclientunsubscribe) and
-[`publish`](#mqlobberclientpublish) until the connection `Duplex` emits a
+further requests, don't call [`subscribe`](#mqlobberclientprototypesubscribetopic-handler-cb),
+[`unsubscribe`](#mqlobberclientprototypeunsubscribetopic-handler-cb) or
+[`publish`](http://localhost:6419/#mqlobberclientprototypepublishtopic-options-cb) until the connection `Duplex` emits a
 [`drain`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_event_drain) event.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
@@ -384,16 +383,16 @@ on behalf of a client.
 This does the heavy-lifting of reading and writing messages to a directory on
 the file system.
 
-- `{Duplex} stream` Connection to the client. The client should use [`MQlobberClient`](#mqlobberclient) on its side of the connection. How the
-connection is made is up to the caller - it just has to supply a
-[`stream.Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
+- `{Duplex} stream` Connection to the client. The client should use [`MQlobberClient`](#mqlobberclientstream-options) on its side of the connection.
+How the connection is made is up to the caller - it just has to supply a
+[`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
 
 - `{Object} [options]` Configuration options. This is passed down to [`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrrier-options)
 (which multiplexes message streams over the connection to the
-server). It also supports the following additional property:
+client). It also supports the following additional property:
 
   - `{Boolean} send_expires` Whether to include message expiry time in metadata
-    sent to clients. Defaults to `false`.
+    sent to the client. Defaults to `false`.
 
 <sub>Go: [TOC](#tableofcontents)</sub>
 
@@ -410,8 +409,8 @@ exactly one word in a topic or `#` to match zero or more words. For example,
 `foo.*` would match `foo.bar` whereas `foo.#` would match `foo`, `foo.bar` and
 `foo.bar.wup`. Note these are the default separator and wildcard characters.
 They can be changed when [constructing the `QlobberFSQ` instance]
-(https://github.com/davedoesdev/qlobber#qlobberoptions) passed to
-[`MQlobberServer`](#mqlobberserver)'s constructor.
+(https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) passed to
+`MQlobberServer`'s [constructor](#mqlobberserverfsq-stream-options).
 
 - `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
 
@@ -425,7 +424,7 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
 **Parameters:**
 
-- `{String} [topic]` Which messages the client should no longer receive. If topic is `undefined` then the client will receive no more messages.
+- `{String} [topic]` Which messages the client should no longer receive. If topic is `undefined` then the client will receive no more messages at all.
 
 - `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
 
@@ -443,19 +442,21 @@ Emitted by a `MQlobberServer` object when it receives a request from its peer
 `MQlobberClient` object to subscribe to messages published to a topic.
 
 If there are no listeners on this event, the default action is to call
-[`subscribe(topic, cb)`](#mqlobberserver_subscribe). If you add a listener on
-this event, the default action will _not_ be called. This gives you the
-opportunity to filter subscription requests in the application.
+[`subscribe(topic, cb)`](#mqlobberserverprototypesubscribetopic-cb).
+If you add a listener on this event, the default action will _not_ be called.
+This gives you the opportunity to filter subscription requests in the
+application.
 
 **Parameters:**
 
 - `{String} topic` The topic to which the client is asking to subscribe. 
 - `{Function} cb` Function to call after processing the subscription request. This function _must_ be called even if you don't call
-[`subscribe`](#mqlobberserver_subscribe) yourself. It takes a single argument:
+[`subscribe`](#mqlobberserverprototypesubscribetopic-cb) yourself.
+It takes a single argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
-    (whether you called [`subscribe`](#mqlobberserver_subscribe) or not).
-    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+    (whether you called [`subscribe`](#mqlobberserverprototypesubscribetopic-cb) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -467,20 +468,21 @@ Emitted by a `MQlobberServer` object when it receives a request from its peer
 `MQlobberClient` object to unsubscribe from messages published to a topic.
 
 If there are no listeners on this event, the default action is to call
-[`unsubscribe(topic, cb)`](#mqlobberserver_unsubscribe). If you add a listener
-on this event, the default action will _not_ be called. This gives you the
-opportunity to filter unsubscription requests in the application.
+[`unsubscribe(topic, cb)`](#mqlobberserverprototypeunsubscribetopic-cb).
+If you add a listener on this event, the default action will _not_ be called.
+This gives you the opportunity to filter unsubscription requests in the
+application.
 
 **Parameters:**
 
 - `{String} topic` The topic from which the client is asking to unsubscribe. 
 - `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
-[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It takes a single
-argument:
+[`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) yourself. It takes
+a single argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
-    (whether you called [`unsubscribe`](#mqlobberserver_unsubscribe) or not).
-    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+    (whether you called [`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -492,19 +494,19 @@ Emited by a `MQlobberServer` object when it receives a request from its peer
 `MQlobberClient` object to unsubscribe from all messages published to any topic.
 
 If there are no listeners on this event, the default action is to call
-[`unsubscribe(cb)`](#mqlobberserver_unsubscribe). If you add a listener on this
-event, the default action will _not_ be called. This gives you the opportunity
-to filter unsubscription requests in the application.
+[`unsubscribe(cb)`](#mqlobberserverprototypeunsubscribetopic-cb). If you add a listener
+on this event, the default action will _not_ be called. This gives you the
+opportunity to filter unsubscription requests in the application.
 
 **Parameters:**
 
 - `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
-[`unsubscribe`](#mqlobberserver_unsubscribe) yourself. It takes a single
+[`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) yourself. It takes a single
 argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
-    (whether you called [`unsubscribe`](#mqlobberserver_unsubscribe) or not).
-    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+    (whether you called [`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -518,7 +520,7 @@ Emitted by a `MQlobberServer` object when it receives a request from its peer
 If there are no listeners on this event, the default action is to call
 `stream.pipe(fsq.publish(topic, options, cb))`, where `fsq` is the
 [`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)
-instance you passed to `MQlobberServer`'s [constructor](#mqlobberserver_fsqstreamoptions).
+instance you passed to `MQlobberServer`'s [constructor](#mqlobberserverfsq-stream-options).
 
 **Parameters:**
 
@@ -532,12 +534,12 @@ instance you passed to `MQlobberServer`'s [constructor](#mqlobberserver_fsqstrea
   - `{Integer} ttl` Time-to-live (in seconds) for this message.
   
 - `{Function} cb` Function to call after processing the publication request. This function _must_ be called even if you don't call
-[`publish`](#mqlobberserver_publish) yourself. It takes a single
+[`publish`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqprototypepublishtopic-payload-options-cb) yourself. It takes a single
 argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
-    (whether you called [`publish`](#mqlobberserver_publish) or not).
-    Otherwise, the client gets a failed status and a [`warning`](#mqlobbereventswarning) event is emitted with `err`.
+    (whether you called [`publish`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqprototypepublishtopic-payload-options-cb) or not).
+    Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -546,7 +548,7 @@ argument:
 > `message` event
 
 Emitted by a `MQlobberServer` object when its `QlobberFSQ` object passes it a
-message published to a topic its peer `MQlobberClient` object has subscribed to.
+message published to a topic to which its peer `MQlobberClient` object has subscribed.
 
 If there are no listeners on this event, the default action is to call
 `stream.pipe(multiplex())`.
@@ -564,8 +566,8 @@ stream and the client.
     handler (across all clients connected to all servers).
   - `{Integer} expires` When the message expires (number of seconds after
     1 January 1970 00:00:00 UTC). This is only present if the 
-    [`MQlobberServer`](#qlobberserver) object was configured with
-    `send_expires` set to `true`.
+    [`MQlobberServer`](#mqlobberserverfsq-stream-options) object was configured
+    with `send_expires` set to `true`.
 
 - `{Function} multiplex` Function to call in order to multiplex a new stream over the connection to the client. It returns the multiplexed stream, to which
 the data from `stream` should be written - after the application applies
@@ -591,8 +593,8 @@ It returns another functon which you can call at any time to send the handshake
 message. The returned function takes a single argument:
 
   - `{Buffer} [handshake_data]` Application-specific handshake data to send to
-    the client. The client-side [`MQlobberClient`](#mqlobber_client) object will
-    emit this as a [`handshake`](#mqlobber_clienteventshandshake) event to its
+    the client. The client-side `MQlobberClient` object will
+    emit this as a [`handshake`](#mqlobberclienteventshandshakehandshake_data) event to its
     application.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
@@ -605,12 +607,12 @@ Emitted by a `MQlobberServer` object when it delays a message to the client
 because the connection is at full capacity.
 
 If you want to avoid buffering further messages, use a `filter` function (see
-[`QlobberFSQ`'s constructor](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)) to prevent messages being sent until the connection `Duplex` emits a
+`QlobberFSQ`'s [constructor](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)) to prevent messages being sent until the connection `Duplex` emits a
 [`drain`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_event_drain) event. In the `filter` function, a handler owned by a `MQlobberServer`
 object will have a property named `mqlobber_stream` set to the connection
 `Duplex`.
 
-You can also use event listeners on [`subscribe_requested`](#mqlobberserver_eventssubscribe_requested), [`unsubscribe_requested`](#mqlobberserver_eventsunsubscribe_requested), [`unsubscribe_all_requested`](#mqlobberserver_eventsunsubscribe_all_requested) and [`publish_requested`](#mqlobberserver_publish_requested) to prevent responses being
+You can also use event listeners on [`subscribe_requested`](#mqlobberservereventssubscribe_requestedtopic-cb), [`unsubscribe_requested`](#mqlobberservereventsunsubscribe_requestedtopic-cb), [`unsubscribe_all_requested`](#mqlobberservereventsunsubscribe_all_requestedcb) and [`publish_requested`](#mqlobberservereventspublish_requestedtopic-stream-options-cb) to prevent responses being
 sent to the client until the connection emits a `drain` event.
 
 Depending on your application, you might also terminate the connection if it
