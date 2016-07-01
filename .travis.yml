@@ -4,8 +4,17 @@ node_js:
   - 0.12
   - 4
   - 6
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-4.8
 env:
-  - TARGET=test
-  - TARGET=travis-coverage
+  global:
+    - CXX=g++-4.8
+  matrix:
+    - TARGET=test
+    - TARGET=travis-coverage
 script:
   - npm run $TARGET
