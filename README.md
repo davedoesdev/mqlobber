@@ -7,7 +7,7 @@ Just Node and a filesystem required.
 [`qlobber-fsq`](https://github.com/davedoesdev/qlobber-fsq) over one or more
 connections.
 
-<p align="center"><img src="diagrams/overview.svg" width="80%"/></p>
+<p align="center"><img src="http://rawgit.davedoesdev.com/davedoesdev/mqlobber/master/diagrams/overview.svg" width="80%"/></p>
 
 Say you have a server and a number of clients, with the clients
 connected to the server using some mechanism which provides a stream for each
@@ -27,7 +27,7 @@ on each stream. Clients get a `Writable` when publishing a message and a
 You can scale out horizontally by creating a number of `QlobberFSQ` instances
 (e.g. one per CPU core), all sharing the same message directory.
 
-<p align="center"><img src="diagrams/multi_instance.svg" width="80%"/></p>
+<p align="center"><img src="http://rawgit.davedoesdev.com/davedoesdev/mqlobber/master/diagrams/multi_instance.svg" width="80%"/></p>
 
 No other backend services are required - just Node and a filesystem.
 
