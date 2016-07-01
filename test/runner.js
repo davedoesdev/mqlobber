@@ -1381,7 +1381,7 @@ describe(type, function ()
             with_mqs(num_mqs, 'should match topics correctly',
             function (mqs, cb)
             {
-                this.timeout(10 * 1000);
+                this.timeout(30 * 1000);
 
                 var results = {},
                     results_single = new Map(),
