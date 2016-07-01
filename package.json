@@ -19,7 +19,7 @@
   "main": "index.js",
   "scripts": {
     "test": "grunt lint test",
-    "travis-test": "grunt lint test coverage coveralls"
+    "travis-coverage": "grunt lint coverage coveralls"
   },
   "directories": {
     "test": "test",
@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~2.0.4",
+    "bpmux": "~2.0.8",
     "qlobber": "~0.7.0"
   },
   "devDependencies": {

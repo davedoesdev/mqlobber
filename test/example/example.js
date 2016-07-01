@@ -8,7 +8,7 @@ describe('example', function ()
     {
         var count = 0,
             servers = [],
-            base_port = 8600;
+            base_port = 8700;
 
         async.times(2, function (n, next)
         {

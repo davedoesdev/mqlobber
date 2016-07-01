@@ -22,7 +22,10 @@ function read_all(s, cb)
 
     s.on('end', function ()
     {
-        cb(Buffer.concat(bufs));
+        if (cb)
+        {
+            cb(Buffer.concat(bufs));
+        }
     });
 
     s.on('readable', function ()
@@ -467,7 +470,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].server._mux.multiplex();
+        mqs[0].server.mux.multiplex();
     });
 
     with_mqs(1, 'client should warn about short handshake data', function (mqs, cb)
@@ -479,7 +482,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].server._mux.multiplex(
+        mqs[0].server.mux.multiplex(
         {
             handshake_data: new Buffer([2])
         });
@@ -521,7 +524,7 @@ describe(type, function ()
             // stop server handshake handler replying
         });
 
-        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
         {
             delay()(new Buffer(0));
         });
@@ -576,7 +579,7 @@ describe(type, function ()
             // stop server handshake handler replying
         });
 
-        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
         {
             delay()(new Buffer(0));
         });
@@ -628,7 +631,7 @@ describe(type, function ()
             // stop server handshake handler replying
         });
 
-        mqs[0].server._mux.on('handshake', function (duplex, hdata, delay)
+        mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
         {
             delay()(new Buffer(0));
         });
@@ -648,7 +651,7 @@ describe(type, function ()
             expect(err.message).to.equal('test error');
             cb();
         });
-        mqs[0].client._mux.emit('error', new Error('test error'));
+        mqs[0].client.mux.emit('error', new Error('test error'));
     });
 
     with_mqs(1, 'server should emit error event when mux errors',
@@ -659,7 +662,7 @@ describe(type, function ()
             expect(err.message).to.equal('test error');
             cb();
         });
-        mqs[0].server._mux.emit('error', new Error('test error'));
+        mqs[0].server.mux.emit('error', new Error('test error'));
     });
 
     with_mqs(1, 'client should throw exception when called after stream finishes', function (mqs, cb, end)
@@ -727,7 +730,7 @@ describe(type, function ()
         mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
         {
             expect(topic).to.equal('foo');
-            duplex.pipe(this._fsq.publish(topic, options, function (err)
+            duplex.pipe(this.fsq.publish(topic, options, function (err)
             {
                 if (err) { return cb(err); }
                 done();
@@ -1020,7 +1023,7 @@ describe(type, function ()
             cb();
         }.bind(this), 1000);
 
-        mqs[0].server._mux.multiplex();
+        mqs[0].server.mux.multiplex();
     }, it, { sinon: true });
 
     with_mqs(1, 'server should warn about empty handshake data', function (mqs, cb)
@@ -1032,7 +1035,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].client._mux.multiplex();
+        mqs[0].client.mux.multiplex();
     });
 
     with_mqs(1, 'server should warn about short handshake data (no flags)', function (mqs, cb)
@@ -1044,7 +1047,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].client._mux.multiplex(
+        mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([3])
         });
@@ -1059,7 +1062,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].client._mux.multiplex(
+        mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([3, 2])
         });
@@ -1074,7 +1077,7 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].client._mux.multiplex(
+        mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([100])
         });
@@ -1091,7 +1094,7 @@ describe(type, function ()
             cb();
         }.bind(this), 1000);
 
-        mqs[0].client._mux.multiplex();
+        mqs[0].client.mux.multiplex();
     }, it, { sinon: true });
 
     with_mqs(1, 'should emit full event when server handshakes are backed up', function (mqs, cb)
@@ -1221,7 +1224,7 @@ describe(type, function ()
     with_mqs(1, 'server should pass on fsq errors in its subscribe method',
     function (mqs, cb)
     {
-        mqs[0].server._fsq.subscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.subscribe = function (topic, handler, cb)
         {
             cb(new Error('test'));
         };
@@ -1238,7 +1241,7 @@ describe(type, function ()
     {
         this.sinon.stub(console, 'error');
 
-        mqs[0].server._fsq.subscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.subscribe = function (topic, handler, cb)
         {
             cb(new Error('test'));
         };
@@ -1270,9 +1273,9 @@ describe(type, function ()
     with_mqs(1, 'server should pass on fsq errors in its unsubscribe(all) method',
     function (mqs, cb)
     {
-        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+        var orig_unsubscribe = mqs[0].server.fsq.unsubscribe;
 
-        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.unsubscribe = function (topic, handler, cb)
         {
             cb(new Error('test'));
         };
@@ -1284,7 +1287,7 @@ describe(type, function ()
             mqs[0].server.unsubscribe(function (err)
             {
                 expect(err.message).to.equal('test');
-                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
                 cb();
             });
         });
@@ -1293,9 +1296,9 @@ describe(type, function ()
     with_mqs(1, 'server should pass on fsq errors in its unsubscribe(topic) method',
     function (mqs, cb)
     {
-        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+        var orig_unsubscribe = mqs[0].server.fsq.unsubscribe;
 
-        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.unsubscribe = function (topic, handler, cb)
         {
             cb(new Error('test'));
         };
@@ -1307,7 +1310,7 @@ describe(type, function ()
             mqs[0].server.unsubscribe('foo', function (err)
             {
                 expect(err.message).to.equal('test');
-                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
                 cb();
             });
         });
@@ -1318,9 +1321,9 @@ describe(type, function ()
     {
         this.sinon.stub(console, 'error');
 
-        var orig_unsubscribe = mqs[0].server._fsq.unsubscribe;
+        var orig_unsubscribe = mqs[0].server.fsq.unsubscribe;
 
-        mqs[0].server._fsq.unsubscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.unsubscribe = function (topic, handler, cb)
         {
             cb(new Error('test'));
         };
@@ -1333,7 +1336,7 @@ describe(type, function ()
             {
                 expect(console.error.calledOnce).to.equal(true);
                 expect(console.error.calledWith(new Error('test'))).to.equal(true);
-                mqs[0].server._fsq.unsubscribe = orig_unsubscribe;
+                mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
                 cb();
             }.bind(this), 1000);
 
@@ -1665,28 +1668,28 @@ describe(type, function ()
         }
     });
 
-    with_mqs(2, 'server should support delaying message until all streams are under high-water mark',
+    with_mqs(1, 'server should support delaying message until all streams are under high-water mark',
     function (mqs, cb)
     {
         this.timeout(60 * 1000);
 
-        mqs[0].client.subscribe('bar', function ()
+        mqs[0].client.subscribe('bar', function (s)
         {
-            // don't read so carrier is backed up
+            mqs[0].server.bar_s = s;
+            // don't read so server is backed up
             mqs[0].client.publish('foo', function (err)
             {
                 if (err) { return cb(err); }
             }).end('hello');
-            // problem is we won't release the caller - it's waiting on
-            // stream end
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[1].client.subscribe('foo', function (s)
+            mqs[0].client.subscribe('foo', function (s)
             {
                 read_all(s, function (v)
                 {
-                    console.log(v);
+                    expect(v.toString()).to.equal('hello');
+                    cb();
                 });
             }, function (err)
             {
@@ -1694,33 +1697,46 @@ describe(type, function ()
                 mqs[0].client.publish('bar', function (err)
                 {
                     if (err) { return cb(err); }
-                }).end(new Buffer(32 * 1024));
+                }).end(new Buffer(128 * 1024));
             });
         });
-    }, it.only,
+    }, it,
     {
+        handler_concurrency: 1,
+
         filter: function (info, handlers, cb)
         {
-        console.log(info);
-        return cb(null, true, handlers);
-            for (var h of handlers)
+            if (info.topic === 'bar')
             {
-                console.log(h.mqlobber_stream._writableState.length);
-                /*if (h.mqlobber_stream &&
-                    (h.mqlobber_stream._writableState.length >=
-                     h.mqlobber_stream._writableState.highWaterMark))
-                {
-                    return cb(null, false);
-                }*/
+                return cb(null, true, handlers);
             }
 
+            for (var h of handlers)
+            {
+                if (h.mqlobber_server)
+                {
+                    for (var d of h.mqlobber_server.mux.duplexes.values())
+                    {
+                        if (d._writableState.length >=
+                            d._writableState.highWaterMark)
+                        {
+                            /* drain 'bar' stream on client */
+                            var bar_s = h.mqlobber_server.bar_s;
+                            if (bar_s)
+                            {
+                                read_all(bar_s);
+                                h.mqlobber_server.bar_s = null;
+                            }
 
+                            return cb(null, false);
+                        }
+                    }
+                }
+                // **** Add test to check no duplexes after sub, unsub, pub
+                //      and recv msg
+            }
 
-
-            //info.num_handlers = handlers.size;
-            //info.count = 0;
-            //cb(null, true, handlers);
-            cb(null, false);
+            cb(null, true, handlers);
         }
     });
 
@@ -1749,7 +1765,7 @@ describe(type, function ()
         {
             if (err) { return cb(err); }
 
-            var listeners = mqs[0].client._mux.listeners('handshake');
+            var listeners = mqs[0].client.mux.listeners('handshake');
             listeners.unshift(function (duplex, hdata, delay)
             {
                 if (!delay)
@@ -1760,11 +1776,11 @@ describe(type, function ()
                 duplex.write('a');
             });
 
-            mqs[0].client._mux.removeAllListeners('handshake');
+            mqs[0].client.mux.removeAllListeners('handshake');
 
             for (var l of listeners)
             {
-                mqs[0].client._mux.on('handshake', l);
+                mqs[0].client.mux.on('handshake', l);
             }
 
             mqs[0].client.publish('foo').end('bar');
@@ -1789,7 +1805,7 @@ describe(type, function ()
             }
         });
 
-        var listeners = mqs[0].server._mux.listeners('handshake');
+        var listeners = mqs[0].server.mux.listeners('handshake');
         listeners.unshift(function (duplex, hdata, delay)
         {
             if (!delay)
@@ -1800,11 +1816,11 @@ describe(type, function ()
             duplex.write('a');
         });
 
-        mqs[0].server._mux.removeAllListeners('handshake');
+        mqs[0].server.mux.removeAllListeners('handshake');
 
         for (var l of listeners)
         {
-            mqs[0].server._mux.on('handshake', l);
+            mqs[0].server.mux.on('handshake', l);
         }
 
         mqs[0].client.subscribe('foo', function ()
@@ -1823,24 +1839,33 @@ describe(type, function ()
             });
         });
     });
+
+    with_mqs(1, 'should clean up duplexes', function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s)
+        {
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                mqs[0].client.unsubscribe('foo', undefined, function (err)
+                {
+                    if (err) { return cb(err); }
+                    process.nextTick(function ()
+                    {
+                        expect(mqs[0].client.mux.duplexes.size).to.equal(0);
+                        expect(mqs[0].server.mux.duplexes.size).to.equal(0);
+                        cb();
+                    });
+                });
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+        });
+    });
 });
 };
-
-/*
-test filter_all_drained:
-
-function filter_all_drained(info, handlers, cb)
-{
-    for (var h of handlers)
-    {
-        if (h.mqlobber_stream &&
-            (h.mqlobber_stream._writableState.length >=
-             h.mqlobber_stream._writableState.highWaterMark))
-        {
-            return cb(null, false);
-        }
-    }
-
-    cb(null, true, handlers);
-}
-*/
