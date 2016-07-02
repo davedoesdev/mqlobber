@@ -65,6 +65,8 @@ describe(type, function ()
     {
         describe('mqs=' + n, function ()
         {
+            this.timeout(timeout * 1000);
+
             var fsq, mqs, ended = false;
 
             before(function (cb)
@@ -75,8 +77,6 @@ describe(type, function ()
 
             before(function (cb)
             {
-                this.timeout(timeout * 1000);
-
                 fsq = new QlobberFSQ(util._extend(
                 {
                     multi_ttl: timeout * 1000,
@@ -347,7 +347,6 @@ describe(type, function ()
 
     with_mqs(1, 'should unsubscribe handler', function (mqs, cb)
     {
-        this.timeout(5000);
         function handler1(s, info)
         {
             expect(info.single).to.equal(false);
@@ -382,7 +381,6 @@ describe(type, function ()
 
     with_mqs(1, 'should unsubscribe topic', function (mqs, cb)
     {
-        this.timeout(5000);
         function handler1(s, info)
         {
             expect(info.single).to.equal(false);
@@ -425,7 +423,6 @@ describe(type, function ()
 
     with_mqs(1, 'should unsubscribe all topics', function (mqs, cb)
     {
-        this.timeout(5000);
         function handler1()
         {
             cb(new Error('should not be called'));
@@ -827,8 +824,6 @@ describe(type, function ()
 
     with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb)
     {
-        this.timeout(2 * 60 * 1000);
-
         var orig_write = mqs[0].client_stream._write,
             the_chunk,
             the_encoding,
@@ -913,8 +908,6 @@ describe(type, function ()
     with_mqs(1, 'should publish and receive work using one handler on single stream',
     function (mqs, cb)
     {
-        this.timeout(5000);
-
         var calls = 0, data = '';
 
         function check(s, info)
@@ -964,8 +957,6 @@ describe(type, function ()
     with_mqs(3, 'should publish and receive work using one handler on multiple streams',
     function (mqs, cb)
     {
-        this.timeout(5000);
-
         var calls = 0, data = '';
 
         function check(s, info)
@@ -1099,8 +1090,6 @@ describe(type, function ()
 
     with_mqs(1, 'should emit full event when server handshakes are backed up', function (mqs, cb)
     {
-        this.timeout(2 * 60 * 1000);
-
         var orig_write = mqs[0].server_stream._write,
             the_chunk,
             the_encoding,
@@ -1381,8 +1370,6 @@ describe(type, function ()
             with_mqs(num_mqs, 'should match topics correctly',
             function (mqs, cb)
             {
-                this.timeout(30 * 1000);
-
                 var results = {},
                     results_single = new Map(),
                     total = 0,
@@ -1578,8 +1565,6 @@ describe(type, function ()
         with_mqs(2, 'server should support setting custom data on message info and stream',
         function (mqs, cb)
         {
-            this.timeout(4000);
-
             var message0_called = false,
                 message1_called = false,
                 laggard0_called = false,
@@ -1674,8 +1659,6 @@ describe(type, function ()
         with_mqs(1, 'server should support delaying message until all streams are under high-water mark',
         function (mqs, cb)
         {
-            this.timeout(60 * 1000);
-
             mqs[0].client.subscribe('bar', function (s)
             {
                 mqs[0].server.bar_s = s;
