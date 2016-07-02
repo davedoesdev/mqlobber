@@ -1572,173 +1572,177 @@ describe(type, function ()
         }, cb);
     });
 
-    with_mqs(2, 'server should support setting custom data on message info and stream',
-    function (mqs, cb)
+    // https://github.com/nodejs/node/pull/7292 isn't on 0.12
+    if ((type != 'in-memory') || (parseFloat(process.versions.node) > 0.12))
     {
-        this.timeout(4000);
-
-        var message0_called = false,
-            message1_called = false,
-            laggard0_called = false,
-            laggard1_called = false,
-            buf = new Buffer(100 * 1024);
-
-        buf.fill('a');
-
-        function check(msg_stream, info, duplex)
+        with_mqs(2, 'server should support setting custom data on message info and stream',
+        function (mqs, cb)
         {
-            expect(info.topic).to.equal('foo');
-            expect(msg_stream.fastest_writable === undefined).to.equal(info.count === 0 ? true : false);
-            info.count += 1;
+            this.timeout(4000);
 
-            if (!msg_stream.fastest_writable)
+            var message0_called = false,
+                message1_called = false,
+                laggard0_called = false,
+                laggard1_called = false,
+                buf = new Buffer(100 * 1024);
+
+            buf.fill('a');
+
+            function check(msg_stream, info, duplex)
             {
-                msg_stream.fastest_writable = new FastestWritable(
+                expect(info.topic).to.equal('foo');
+                expect(msg_stream.fastest_writable === undefined).to.equal(info.count === 0 ? true : false);
+                info.count += 1;
+
+                if (!msg_stream.fastest_writable)
                 {
-                    emit_laggard: true
+                    msg_stream.fastest_writable = new FastestWritable(
+                    {
+                        emit_laggard: true
+                    });
+                    msg_stream.pipe(msg_stream.fastest_writable);
+                }
+
+                msg_stream.fastest_writable.add_peer(duplex);
+
+                if (info.count === info.num_handlers)
+                {
+                    // make fastest_writable enter waiting state
+                    msg_stream.fastest_writable.write(buf);
+                }
+            }
+
+            mqs[0].server.on('message', function (msg_stream, info, multiplex)
+            {
+                expect(message0_called).to.equal(false);
+                message0_called = true;
+                var duplex = multiplex();
+                check(msg_stream, info, duplex);
+                duplex.on('laggard', function ()
+                {
+                    laggard0_called = true;
                 });
-                msg_stream.pipe(msg_stream.fastest_writable);
-            }
-
-            msg_stream.fastest_writable.add_peer(duplex);
-
-            if (info.count === info.num_handlers)
-            {
-                // make fastest_writable enter waiting state
-                msg_stream.fastest_writable.write(buf);
-            }
-        }
-
-        mqs[0].server.on('message', function (msg_stream, info, multiplex)
-        {
-            expect(message0_called).to.equal(false);
-            message0_called = true;
-            var duplex = multiplex();
-            check(msg_stream, info, duplex);
-            duplex.on('laggard', function ()
-            {
-                laggard0_called = true;
             });
-        });
 
-        mqs[1].server.on('message', function (msg_stream, info, multiplex)
-        {
-            expect(message1_called).to.equal(false);
-            message1_called = true;
-            var null_stream = new NullStream();
-            null_stream.on('laggard', function ()
+            mqs[1].server.on('message', function (msg_stream, info, multiplex)
             {
-                laggard1_called = true;
-            });
-            check(msg_stream, info, null_stream);
-        });
-
-        mqs[0].client.subscribe('foo', function (s, info)
-        {
-            expect(info.topic).to.equal('foo');
-            read_all(s, function (v)
-            {
-                expect(v.toString()).to.equal(buf.toString() + 'bar');
-                setTimeout(function ()
+                expect(message1_called).to.equal(false);
+                message1_called = true;
+                var null_stream = new NullStream();
+                null_stream.on('laggard', function ()
                 {
-                    expect(laggard0_called).to.equal(false);
-                    expect(laggard1_called).to.equal(true);
-                    cb();
-                }, 2000);
+                    laggard1_called = true;
+                });
+                check(msg_stream, info, null_stream);
             });
-        }, function (err)
-        {
-            if (err) { return cb(err); }
-            mqs[1].client.subscribe('#', function (s, info)
-            {
-                cb(new Error('should not be called'));
-            }, function (err)
-            {
-                if (err) { return cb(err); }
-                mqs[0].client.publish('foo').end('bar');
-            });
-        });
-    }, it,
-    {
-        filter: function (info, handlers, cb)
-        {
-            info.num_handlers = handlers.size;
-            info.count = 0;
-            cb(null, true, handlers);
-        }
-    });
 
-    with_mqs(1, 'server should support delaying message until all streams are under high-water mark',
-    function (mqs, cb)
-    {
-        this.timeout(60 * 1000);
-
-        mqs[0].client.subscribe('bar', function (s)
-        {
-            mqs[0].server.bar_s = s;
-            // don't read so server is backed up
-            mqs[0].client.publish('foo', function (err)
+            mqs[0].client.subscribe('foo', function (s, info)
             {
-                if (err) { return cb(err); }
-            }).end('hello');
-        }, function (err)
-        {
-            if (err) { return cb(err); }
-            mqs[0].client.subscribe('foo', function (s)
-            {
+                expect(info.topic).to.equal('foo');
                 read_all(s, function (v)
                 {
-                    expect(v.toString()).to.equal('hello');
-                    cb();
+                    expect(v.toString()).to.equal(buf.toString() + 'bar');
+                    setTimeout(function ()
+                    {
+                        expect(laggard0_called).to.equal(false);
+                        expect(laggard1_called).to.equal(true);
+                        cb();
+                    }, 2000);
                 });
             }, function (err)
             {
                 if (err) { return cb(err); }
-                mqs[0].client.publish('bar', function (err)
+                mqs[1].client.subscribe('#', function (s, info)
+                {
+                    cb(new Error('should not be called'));
+                }, function (err)
                 {
                     if (err) { return cb(err); }
-                }).end(new Buffer(128 * 1024));
+                    mqs[0].client.publish('foo').end('bar');
+                });
             });
-        });
-    }, it,
-    {
-        handler_concurrency: 1,
-
-        filter: function (info, handlers, cb)
+        }, it,
         {
-            if (info.topic === 'bar')
+            filter: function (info, handlers, cb)
             {
-                return cb(null, true, handlers);
+                info.num_handlers = handlers.size;
+                info.count = 0;
+                cb(null, true, handlers);
             }
+        });
 
-            for (var h of handlers)
+        with_mqs(1, 'server should support delaying message until all streams are under high-water mark',
+        function (mqs, cb)
+        {
+            this.timeout(60 * 1000);
+
+            mqs[0].client.subscribe('bar', function (s)
             {
-                if (h.mqlobber_server)
+                mqs[0].server.bar_s = s;
+                // don't read so server is backed up
+                mqs[0].client.publish('foo', function (err)
                 {
-                    for (var d of h.mqlobber_server.mux.duplexes.values())
+                    if (err) { return cb(err); }
+                }).end('hello');
+            }, function (err)
+            {
+                if (err) { return cb(err); }
+                mqs[0].client.subscribe('foo', function (s)
+                {
+                    read_all(s, function (v)
                     {
-                        if (d._writableState.length >=
-                            d._writableState.highWaterMark)
-                        {
-                            /* drain 'bar' stream on client */
-                            var bar_s = h.mqlobber_server.bar_s;
-                            if (bar_s)
-                            {
-                                read_all(bar_s);
-                                h.mqlobber_server.bar_s = null;
-                            }
+                        expect(v.toString()).to.equal('hello');
+                        cb();
+                    });
+                }, function (err)
+                {
+                    if (err) { return cb(err); }
+                    mqs[0].client.publish('bar', function (err)
+                    {
+                        if (err) { return cb(err); }
+                    }).end(new Buffer(128 * 1024));
+                });
+            });
+        }, it,
+        {
+            handler_concurrency: 1,
 
-                            return cb(null, false);
+            filter: function (info, handlers, cb)
+            {
+                if (info.topic === 'bar')
+                {
+                    return cb(null, true, handlers);
+                }
+
+                for (var h of handlers)
+                {
+                    if (h.mqlobber_server)
+                    {
+                        for (var d of h.mqlobber_server.mux.duplexes.values())
+                        {
+                            if (d._writableState.length >=
+                                d._writableState.highWaterMark)
+                            {
+                                /* drain 'bar' stream on client */
+                                var bar_s = h.mqlobber_server.bar_s;
+                                if (bar_s)
+                                {
+                                    read_all(bar_s);
+                                    h.mqlobber_server.bar_s = null;
+                                }
+
+                                return cb(null, false);
+                            }
                         }
                     }
+                    // **** Add test to check no duplexes after sub, unsub, pub
+                    //      and recv msg
                 }
-                // **** Add test to check no duplexes after sub, unsub, pub
-                //      and recv msg
-            }
 
-            cb(null, true, handlers);
-        }
-    });
+                cb(null, true, handlers);
+            }
+        });
+    }
 
     with_mqs(1, 'server should warn about unexpected data', function (mqs, cb)
     {
