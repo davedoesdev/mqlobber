@@ -55,7 +55,7 @@ function topic_sort(a, b)
     return parseInt(a.substr(1), 10) - parseInt(b.substr(1), 10);
 }
 
-var timeout = 2 * 60;
+var timeout = 4 * 60;
 
 module.exports = function (type, connect_and_accept)
 {
