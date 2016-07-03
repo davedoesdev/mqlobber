@@ -216,8 +216,6 @@ describe(type, function ()
     {
         with_mqs(n, 'should publish ' + m + ' messages on each stream', function (mqs, cb)
         {
-            this.timeout(timeout * 1000);
-
             var count_in = 0, receiveds = [];
 
             function check()
