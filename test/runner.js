@@ -55,7 +55,7 @@ function topic_sort(a, b)
     return parseInt(a.substr(1), 10) - parseInt(b.substr(1), 10);
 }
 
-var timeout = 10 * 60;
+var timeout = 2 * 60;
 
 module.exports = function (type, connect_and_accept)
 {
@@ -1718,8 +1718,6 @@ describe(type, function ()
                             }
                         }
                     }
-                    // **** Add test to check no duplexes after sub, unsub, pub
-                    //      and recv msg
                 }
 
                 cb(null, true, handlers);
@@ -1729,14 +1727,23 @@ describe(type, function ()
 
     with_mqs(1, 'server should warn about unexpected data', function (mqs, cb)
     {
-        var duplex;
+        var duplex, warned = false, got_message = false;
+
+        function check()
+        {
+            if (warned && got_message)
+            {
+                cb();
+            }
+        }
 
         mqs[0].server.on('warning', function (err, obj)
         {
             expect(err.message).to.equal('unexpected data');
             expect(obj).to.be.an.instanceof(stream.Duplex);
             expect(obj).to.equal(duplex);
-            cb();
+            warned = true;
+            check();
         });
 
         mqs[0].server.on('message', function (data, info, multiplex)
@@ -1748,6 +1755,11 @@ describe(type, function ()
 
         mqs[0].client.subscribe('foo', function (s)
         {
+            read_all(s, function ()
+            {
+                got_message = true;
+                check();
+            });
         }, function (err)
         {
             if (err) { return cb(err); }
