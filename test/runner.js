@@ -1387,7 +1387,7 @@ describe(type, function ()
                     {
                         expect(count).to.equal(0);
                         cb();
-                    }, 3000);
+                    }, 30 * 1000);
                 }
 
                 async.times(rabbitmq_bindings.test_bindings.length, function (i, cb2)
