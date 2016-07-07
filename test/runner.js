@@ -1379,15 +1379,6 @@ describe(type, function ()
                     total += expected[i][1].length * rounds;
                 }
 
-                if (total === 0)
-                {
-                    setTimeout(function ()
-                    {
-                        expect(count).to.equal(0);
-                        cb();
-                    }, 30 * 1000);
-                }
-
                 async.times(rabbitmq_bindings.test_bindings.length, function (i, cb2)
                 {
                     var n = Math.floor(i / topics_per_mq);
@@ -1494,6 +1485,15 @@ describe(type, function ()
                         }, function (err)
                         {
                             if (err) { return cb(err); }
+
+                            if (total === 0)
+                            {
+                                setTimeout(function ()
+                                {
+                                    expect(count).to.equal(0);
+                                    cb();
+                                }, 30 * 1000);
+                            }
                         });
                     }
                     
