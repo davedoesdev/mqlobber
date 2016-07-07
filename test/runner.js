@@ -1440,7 +1440,8 @@ describe(type, function ()
 
                                 cb();
                             }
-                            else if (count > total)
+                            else if ((count > total) ||
+                                     (count_single > expected_single.size * rounds))
                             {
                                 cb(new Error('too many messages'));
                             }
@@ -1491,6 +1492,7 @@ describe(type, function ()
                                 setTimeout(function ()
                                 {
                                     expect(count).to.equal(0);
+                                    expect(count_single).to.equal(0);
                                     cb();
                                 }, 30 * 1000);
                             }
