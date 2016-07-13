@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~2.0.9",
+    "bpmux": "~2.1.0",
     "qlobber": "~0.7.0"
   },
   "devDependencies": {
