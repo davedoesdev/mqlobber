@@ -1112,6 +1112,11 @@ describe(type, function ()
             count_incomplete = 0,
             full_called = false;
 
+        mqs[0].server.on('warning', function (err)
+        {
+            expect(err.message).to.equal('unexpected data');
+        });
+
         mqs[0].server_stream._write = function (chunk, encoding, callback)
         {
             the_chunk = chunk;
