@@ -596,7 +596,7 @@ describe(type, function ()
     with_mqs(1, 'should send server errors to client when publishing',
     function (mqs, cb)
     {
-        var got_warning = false;
+        var got_warning = false, got_warning2 = false, got_error = false;
 
         mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
         {
@@ -605,16 +605,32 @@ describe(type, function ()
 
         mqs[0].server.on('warning', function (err, duplex)
         {
-            expect(err.message).to.equal('test error');
             expect(duplex).to.be.an.instanceof(stream.Duplex);
+            expect(err.message).to.equal('test error');
             got_warning = true;
+
+            mqs[0].server.removeAllListeners('warning');
+            mqs[0].server.on('warning', function (err, duplex)
+            {
+                expect(duplex).to.be.an.instanceof(stream.Duplex);
+                expect(err.message).to.equal('unexpected data');
+                got_warning2 = true;
+                if (got_error)
+                {
+                    cb();
+                }
+            });
         });
 
         mqs[0].client.publish('foo', function (err)
         {
             expect(err.message).to.equal('server error');
             expect(got_warning).to.equal(true);
-            cb();
+            got_error = true;
+            if (got_warning2)
+            {
+                cb();
+            }
         }).end('bar');
     });
 
