@@ -741,27 +741,19 @@ describe(type, function ()
         mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
         {
             expect(topic).to.equal('foo');
-            duplex.pipe(this.fsq.publish(topic, options, function (err)
+
+            mqs[0].client.subscribe('foo', function (s, info)
             {
-                if (err) { return cb(err); }
-                done();
+                expect(info.topic).to.equal('foo');
 
-                mqs[0].server.once('subscribe_requested', function (topic, done)
+                read_all(s, function (v)
                 {
-                    expect(topic).to.equal('foo');
-                    this.subscribe(topic, function (err)
-                    {
-                        if (err) { return cb(err); }
-                        done();
-                        mqs[0].client.unsubscribe();
-                    });
+                    expect(v.toString()).to.equal('bar');
+                    mqs[0].client.unsubscribe();
                 });
+            });
 
-                mqs[0].client.subscribe('foo', function (s)
-                {
-                    cb(new Error('should not be called'));
-                });
-            }));
+            duplex.pipe(this.fsq.publish(topic, options, done));
         });
 
         mqs[0].server.on('unsubscribe_requested', function (topic, done)
@@ -770,8 +762,15 @@ describe(type, function ()
             this.unsubscribe(topic, function (err)
             {
                 if (err) { return cb(err); }
+                // wait for client to get response
+                mqs[0].client.mux.once('handshake', function ()
+                {
+                    process.nextTick(function ()
+                    {
+                        mqs[0].client.publish('foo').end('bar');
+                    });
+                });
                 done();
-                mqs[0].client.publish('foo').end('bar');
             });
         });
 
@@ -781,14 +780,86 @@ describe(type, function ()
             this.subscribe(topic, function (err)
             {
                 if (err) { return cb(err); }
+                // wait for client to get response
+                mqs[0].client.mux.once('handshake', function ()
+                {
+                    process.nextTick(function ()
+                    {
+                        mqs[0].client.unsubscribe('foo');
+                    });
+                });
                 done();
-                mqs[0].client.unsubscribe('foo');
             });
         });
 
         mqs[0].client.subscribe('foo', function (s)
         {
             cb(new Error('should not be called'));
+        });
+    });
+
+    with_mqs(1, 'should warn about errors when callbacks are omitted', function (mqs, cb)
+    {
+        mqs[0].client.subscribe('bar', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+
+            var server_warnings = [],
+                client_warnings = [];
+
+            function error()
+            {
+                arguments[arguments.length - 1](new Error('dummy'));
+            }
+
+            function check()
+            {
+                if ((server_warnings.length > 5) ||
+                    (client_warnings.length > 4))
+                {
+                    return cb(new Error('called too many times'));
+                }
+
+                if ((server_warnings.length === 5) &&
+                    (client_warnings.length === 4))
+                {
+                    expect(server_warnings).to.eql([
+                        'dummy', 'dummy', 'dummy', 'dummy', 'unexpected data']);
+                    expect(client_warnings).to.eql([
+                        'server error', 'server error', 'server error', 'server error']);
+                    cb();
+                }
+            }
+
+            mqs[0].server.on('warning', function (err)
+            {
+                server_warnings.push(err.message);
+                check();
+            });
+
+            mqs[0].client.on('warning', function (err)
+            {
+                client_warnings.push(err.message);
+                check();
+            });
+
+            mqs[0].server.on('publish_requested', error);
+            mqs[0].server.on('subscribe_requested', error);
+            mqs[0].server.on('unsubscribe_requested', error);
+            mqs[0].server.on('unsubscribe_all_requested', error);
+
+            mqs[0].client.subscribe('foo', function ()
+            {
+                cb(new Error('should not be called'));
+            });
+
+            mqs[0].client.unsubscribe('bar');
+            mqs[0].client.unsubscribe();
+
+            mqs[0].client.publish('bar').end('bar');
         });
     });
 

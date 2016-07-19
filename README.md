@@ -414,7 +414,7 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
 - `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
 
-  - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
+  - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.prototype](#toc_mqlobberserverprototype)</sub>
 
