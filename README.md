@@ -253,6 +253,10 @@ the following arguments:
       [`MQlobberServer`](#mqlobberserverfsq-stream-options) instance is
       configured with `send_expires` set to `true`.
 
+  - `{Function} done` Function to call once you've handled the message. Note that calling this function is only mandatory if `info.single === true`, in order to clean up the message on the server. `done` takes one argument:
+
+    - `{Object} err` If an error occurred then pass details of the error, otherwise pass `null` or `undefined`.
+
 - `{Function} [cb]` Optional function to call once the subscription has been registered with the server. This will be passed the following argument:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.

@@ -1958,5 +1958,184 @@ describe(type, function ()
             }).end('bar');
         });
     });
+
+    with_mqs(1, 'should tell server when processing work is done',
+    function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            {
+                expect(delay).to.equal(null);
+                expect(hdata).to.eql(new Buffer([0]));
+                cb();
+            });
+
+            done();
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should tell server when processing work errors',
+    function (mqs, cb)
+    {
+        mqs[0].server.fsq.on('warning', function (err)
+        {
+            expect(err.message).to.equal('client error');
+
+            if (count === 3)
+            {
+                cb();
+            }
+        });
+
+        mqs[0].client.on('warning', function (err)
+        {
+            expect(err.message).to.equal('dummy');
+        });
+
+        var count = 0;
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            {
+                expect(delay).to.equal(null);
+                expect(hdata).to.eql(new Buffer([1]));
+                count += 1;
+            });
+
+            done(new Error('dummy'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should be able to call done twice', function (mqs, cb)
+    {
+        var count = 0;
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            {
+                expect(delay).to.equal(null);
+                expect(hdata).to.eql(new Buffer([0]));
+                
+                count += 1;
+                if (count === 1)
+                {
+                    setTimeout(function ()
+                    {
+                        expect(count).to.equal(1);
+                        cb();
+                    }, 3000);
+                }
+            });
+
+            done();
+            done(new Error('dummy'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should do nothing when done called for multi message',
+    function (mqs, cb)
+    {
+        var count = 0;
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            {
+                expect(delay).to.equal(null);
+                expect(hdata).to.eql(new Buffer(0));
+                
+                count += 1;
+                if (count === 1)
+                {
+                    setTimeout(function ()
+                    {
+                        expect(count).to.equal(1);
+                        cb();
+                    }, 3000);
+                }
+            });
+
+            done();
+            done(new Error('dummy'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'server should error when work handshake is empty',
+    function (mqs, cb)
+    {
+        mqs[0].server.fsq.on('warning', function (err)
+        {
+            expect(err.message).to.equal('buffer too small');
+            cb();
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            expect(info.single).to.equal(false);
+
+            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            {
+                expect(delay).to.equal(null);
+                expect(hdata).to.eql(new Buffer(0));
+            });
+
+            done();
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+
+            var listeners = mqs[0].client.mux.listeners('handshake');
+            listeners.unshift(function (duplex, hdata, delay)
+            {
+                if (hdata.length > 1)
+                {
+                    hdata.writeUInt8(hdata.readUInt8(0) & ~1);
+                }
+            });
+
+            mqs[0].client.mux.removeAllListeners('handshake');
+
+            for (var l of listeners)
+            {
+                mqs[0].client.mux.on('handshake', l);
+            }
+
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
 });
 };
