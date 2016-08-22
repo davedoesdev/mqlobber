@@ -2137,5 +2137,27 @@ describe(type, function ()
             }).end('bar');
         });
     });
+
+    with_mqs(1, 'should emit ack event', function (mqs, cb)
+    {
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            mqs[0].server.on('ack', function (info)
+            {
+                expect(info.single).to.equal(true);
+                expect(info.topic).to.equal('foo');
+                cb();
+            });
+
+            done();
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err);  }
+            }).end('bar');
+        });
+    });
 });
 };

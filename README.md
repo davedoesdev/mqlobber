@@ -194,6 +194,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberservereventsmessagestream-info-multiplex"></a>[MQlobberServer.events.message](#mqlobberservereventsmessagestream-info-multiplex)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
+- <a name="toc_mqlobberservereventsackinfo"></a>[MQlobberServer.events.ack](#mqlobberservereventsackinfo)
 - <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
 - <a name="toc_mqlobberservereventswarningerr-obj"></a>[MQlobberServer.events.warning](#mqlobberservereventswarningerr-obj)
 
@@ -621,6 +622,25 @@ sent to the client until the connection emits a `drain` event.
 
 Depending on your application, you might also terminate the connection if it
 can't keep up.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.ack(info)
+
+> `ack` event
+
+Emitted by a `MQlobberServer` object when the client has acknowledged receipt
+of a message.
+
+**Parameters:**
+
+- `{Object} info` Metadata for the message, with the following properties: 
+  - `{String} topic` Topic to which the message was published.
+  - `{Boolean} single` Always `true` because acknowledgements are only supported
+    for messages which were given to a single handler (across all clients
+    connected to all servers).
+  - `{Integer} expires` When the message expires (number of milliseconds after
+    1 January 1970 00:00:00 UTC).
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
