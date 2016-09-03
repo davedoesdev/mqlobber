@@ -1268,6 +1268,221 @@ describe(type, function ()
         });
     });
 
+    with_mqs(1, 'should be able to ignore a message received from fsq',
+    function (mqs, cb)
+    {
+        mqs[0].server.on('message', function (data, info, multiplex, done)
+        {
+            expect(info.single).to.equal(false);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now();
+
+            expect(info.expires).to.be.above(now);
+            expect(info.expires).to.be.below(now + timeout * 1000);
+
+            expect(done).to.be.an.instanceof(Function);
+
+            var msg1, msg2;
+
+            this.fsq.on('warning', function (err)
+            {
+                msg1 = err.message;
+            });
+
+            data.on('error', function (err)
+            {
+                msg2 = err.message;
+            });
+
+            done(new Error('dummy'), function ()
+            {
+                expect(msg1).to.equal('dummy');
+                expect(msg2).to.equal('dummy');
+
+                // check stream was ended
+                read_all(data, function (v)
+                {
+                    expect(v.toString()).to.equal('');
+                    cb();
+                });
+            });
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo').end('bar');
+        });
+    });
+
+    with_mqs(1, 'should be able to do server callback after multiplexing',
+    function (mqs, cb)
+    {
+        var msg1, msg2, msg3;
+
+        mqs[0].server.on('warning', function (err)
+        {
+            msg1 = err.message;
+        });
+
+        mqs[0].server.fsq.on('warning', function (err)
+        {
+            msg2 = err.message;
+        });
+
+        mqs[0].server.on('message', function (data, info, multiplex, done)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now();
+
+            expect(info.expires).to.be.above(now);
+            expect(info.expires).to.be.below(now + timeout * 2 * 1000);
+
+            expect(done).to.be.an.instanceof(Function);
+
+            data.on('error', function (err)
+            {
+                msg3 = err.message;
+            });
+
+            data.pipe(multiplex());
+
+            done(new Error('dummy'));
+        });
+
+        mqs[0].client.on('warning', function (err)
+        {
+            expect(err.message).to.equal('dummy');
+
+            expect(msg1).to.equal('dummy');
+            expect(msg2).to.equal('dummy');
+            expect(msg3).to.equal('dummy');
+
+            if (cb)
+            {
+                cb();
+            }
+            cb = null;
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now(), expires = info.expires * 1000;
+
+            expect(expires).to.be.above(now);
+            expect(expires).to.be.below(now + timeout * 2 * 1000);
+
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('');
+                done(new Error('dummy'));
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should be able to do client callback after multiplexing',
+    function (mqs, cb)
+    {
+        var msgs, server_done;
+
+        mqs[0].server.on('warning', function (err)
+        {
+            expect(err.message).to.equal('client error');
+            msgs.push('server warning');
+        });
+
+        mqs[0].server.fsq.once('warning', function (err)
+        {
+            expect(err.message).to.equal('client error');
+            msgs.push('fsq warning');
+        });
+
+        mqs[0].server.on('message', function (data, info, multiplex, done)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now();
+
+            expect(info.expires).to.be.above(now);
+            expect(info.expires).to.be.below(now + timeout * 2 * 1000);
+
+            expect(done).to.be.an.instanceof(Function);
+
+            data.on('error', function (err)
+            {
+                expect(err.message).to.equal('client error');
+                msgs.push('data error');
+            });
+
+            server_done = done;
+
+            data.pipe(multiplex());
+        });
+
+        mqs[0].client.on('warning', function (err)
+        {
+            expect(err.message).to.equal('dummy');
+            msgs.push('client warning');
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info, done)
+        {
+            expect(info.single).to.equal(true);
+            expect(info.topic).to.equal('foo');
+
+            var now = Date.now(), expires = info.expires * 1000;
+
+            expect(expires).to.be.above(now);
+            expect(expires).to.be.below(now + timeout * 2 * 1000);
+
+            msgs = [];
+            done(new Error('dummy'));
+
+            read_all(s, function (v)
+            {
+                expect(msgs).to.eql(['client warning',
+                                     'fsq warning',
+                                     'server warning',
+                                     'data error']);
+
+                // bpmux will already have sent the data
+                expect(v.toString()).to.equal('bar');
+
+                mqs[0].server.fsq.once('warning', function (err)
+                {
+                    expect(err.message).to.equal('dummy');
+
+                    if (cb)
+                    {
+                        cb();
+                    }
+                    cb = null;
+                });
+
+                // check server_done can be called too
+                server_done(new Error('dummy'));
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }).end('bar');
+        });
+    });
+
     with_mqs(1, 'should publish and receive work with ttl',
     function (mqs, cb)
     {

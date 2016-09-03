@@ -191,7 +191,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberservereventsunsubscribe_requestedtopic-cb"></a>[MQlobberServer.events.unsubscribe_requested](#mqlobberservereventsunsubscribe_requestedtopic-cb)
 - <a name="toc_mqlobberservereventsunsubscribe_all_requestedcb"></a>[MQlobberServer.events.unsubscribe_all_requested](#mqlobberservereventsunsubscribe_all_requestedcb)
 - <a name="toc_mqlobberservereventspublish_requestedtopic-stream-options-cb"></a>[MQlobberServer.events.publish_requested](#mqlobberservereventspublish_requestedtopic-stream-options-cb)
-- <a name="toc_mqlobberservereventsmessagestream-info-multiplex"></a>[MQlobberServer.events.message](#mqlobberservereventsmessagestream-info-multiplex)
+- <a name="toc_mqlobberservereventsmessagestream-info-multiplex-done"></a>[MQlobberServer.events.message](#mqlobberservereventsmessagestream-info-multiplex-done)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
 - <a name="toc_mqlobberservereventsackinfo"></a>[MQlobberServer.events.ack](#mqlobberservereventsackinfo)
@@ -548,7 +548,7 @@ argument:
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
-## MQlobberServer.events.message(stream, info, multiplex)
+## MQlobberServer.events.message(stream, info, multiplex, done)
 
 > `message` event
 
@@ -577,6 +577,11 @@ stream and the client.
 - `{Function} multiplex` Function to call in order to multiplex a new stream over the connection to the client. It returns the multiplexed stream, to which
 the data from `stream` should be written - after the application applies
 whatever transforms and processing it requires.
+
+- `{Function} done` If you don't call `multiplex` then you should call this function to indicate you have finished handling the message. `done` takes the
+following optional argument:
+
+  - `{Object} [err]` If an error occurred while handling the message, pass it here.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
