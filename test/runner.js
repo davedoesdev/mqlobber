@@ -2374,5 +2374,72 @@ describe(type, function ()
             }).end('bar');
         });
     });
+
+    with_mqs(1, 'should not publish message if stream errors', function (mqs, cb)
+    {
+        mqs[0].server.on('publish_requested', function (topic, stream, options, cb)
+        {
+            stream.pipe(this.fsq.publish(topic, options, cb));
+            stream.emit('error', new Error('dummy'));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                expect(err.message).to.equal('server error');
+                setTimeout(cb, 2000);
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should not publish message if stream errors (>1 publish)', function (mqs, cb)
+    {
+        mqs[0].server.on('publish_requested', function (topic, stream, options, cb)
+        {
+            stream.pipe(this.fsq.publish(topic, options, cb));
+            stream.pipe(this.fsq.publish(topic, options, cb));
+            stream.emit('error', new Error('dummy'));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                expect(err.message).to.equal('server error');
+                setTimeout(cb, 2000);
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should not publish message if stream errors (0 publish)', function (mqs, cb)
+    {
+        mqs[0].server.on('publish_requested', function (topic, stream, options, cb)
+        {
+            stream.emit('error', new Error('dummy'));
+            cb(new Error('dummy'));
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+            cb(new Error('should not be called'));
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                expect(err.message).to.equal('server error');
+                setTimeout(cb, 2000);
+            }).end('bar');
+        });
+    });
 });
 };
