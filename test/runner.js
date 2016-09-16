@@ -2480,7 +2480,11 @@ describe(type, function ()
             expect(subreq_called).to.equal(false);
             expect(pubreq_called).to.equal(false);
             expect(info.topic).to.equal('foo');
-            cb();
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                cb();
+            });
         }, function (err)
         {
             if (err) { return cb(err); }
