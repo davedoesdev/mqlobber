@@ -2444,27 +2444,41 @@ describe(type, function ()
 
     with_mqs(1, 'should emit pre_subscribe_requested and pre_publish_requested events', function (mqs, cb)
     {
-        var pre_sub_called = false,
-            pre_pub_called = false;
+        var presubreq_called = false,
+            prepubreq_called = false,
+            subreq_called = false,
+            pubreq_called = false;
 
         mqs[0].server.on('pre_subscribe_requested', function (topic, done)
         {
-            pre_sub_called = true;
+            presubreq_called = true;
             expect(topic).to.equal('foo');
             this.subscribe(topic, done);
         });
 
+        mqs[0].server.on('subscribe_requested', function ()
+        {
+            subreq_called = true;
+        });
+
         mqs[0].server.on('pre_publish_requested', function (topic, duplex, options, done)
         {
-            pre_pub_called = true;
+            prepubreq_called = true;
             expect(topic).to.equal('foo');
             duplex.pipe(this.fsq.publish(topic, options, done));
         });
 
+        mqs[0].server.on('publish_requested', function ()
+        {
+            pubreq_called = true;
+        });
+
         mqs[0].client.subscribe('foo', function (s, info)
         {
-            expect(pre_sub_called).to.equal(true);
-            expect(pre_pub_called).to.equal(true);
+            expect(presubreq_called).to.equal(true);
+            expect(prepubreq_called).to.equal(true);
+            expect(subreq_called).to.equal(false);
+            expect(pubreq_called).to.equal(false);
             expect(info.topic).to.equal('foo');
             cb();
         }, function (err)
