@@ -2441,5 +2441,40 @@ describe(type, function ()
             }).end('bar');
         });
     });
+
+    with_mqs(1, 'should emit pre_subscribe_requested and pre_publish_requested events', function (mqs, cb)
+    {
+        var pre_sub_called = false,
+            pre_pub_called = false;
+
+        mqs[0].server.on('pre_subscribe_requested', function (topic, done)
+        {
+            pre_sub_called = true;
+            expect(topic).to.equal('foo');
+            this.subscribe(topic, done);
+        });
+
+        mqs[0].server.on('pre_publish_requested', function (topic, duplex, options, done)
+        {
+            pre_pub_called = true;
+            expect(topic).to.equal('foo');
+            duplex.pipe(this.fsq.publish(topic, options, done));
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(pre_sub_called).to.equal(true);
+            expect(pre_pub_called).to.equal(true);
+            expect(info.topic).to.equal('foo');
+            cb();
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+        });
+    });
 });
 };
