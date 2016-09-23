@@ -170,6 +170,8 @@ describe(type, function ()
             expect(info.single).to.equal(false);
             expect(info.topic).to.equal('foo');
 
+            expect(this).to.equal(mqs[0].client);
+
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
