@@ -95,16 +95,27 @@ describe(type, function ()
                                       util._extend(
                                       {
                                           send_expires: true
-                                      }, options));
-
-                            cmq.on('handshake', function ()
-                            {
-                                cb(null, {
+                                      }, options)),
+                                info = {
                                     client: cmq,
                                     server: smq,
                                     client_stream: cs,
                                     server_stream: ss
-                                });
+                                };
+
+                            if (options && options.onmade)
+                            {
+                                options.onmade(info);
+                            }
+
+                            if (options && options.skip_client_handshake)
+                            {
+                                return cb(null, info);
+                            }
+
+                            cmq.on('handshake', function ()
+                            {
+                                cb(null, info);
                             });
                         });
                     }, function (err, v)
@@ -125,6 +136,11 @@ describe(type, function ()
 
                 async.each(mqs, function (mq, cb)
                 {
+                    if (mq.client.mux.carrier._readableState.ended ||
+                        mq.client.mux.carrier.destroyed)
+                    {
+                        return cb();
+                    }
                     mq.client_stream.on('end', cb);
                     mq.server_stream.on('end', function ()
                     {
@@ -682,25 +698,22 @@ describe(type, function ()
     {
         end(function ()
         {
-            expect(function ()
+            mqs[0].client.subscribe('foo', function ()
             {
-                mqs[0].client.subscribe('foo', function ()
+                cb(new Error('should not be called'));
+            }, function (err)
+            {
+                expect(err.message).to.equal('finished');
+                mqs[0].client.unsubscribe(function (err)
                 {
-                    cb(new Error('should not be called'));
+                    expect(err.message).to.equal('finished');
+                    mqs[0].client.publish('foo', function (err)
+                    {
+                        expect(err.message).to.equal('finished');
+                        cb(); 
+                    }).end('bar');
                 });
-            }).to.throw('finished');
-            
-            expect(function ()
-            {
-                mqs[0].client.unsubscribe();
-            }).to.throw('finished');
-
-            expect(function ()
-            {
-                mqs[0].client.publish('foo').end('bar');
-            }).to.throw('finished');
-
-            cb();
+            });
         });
     });
 
@@ -909,7 +922,7 @@ describe(type, function ()
         });
     });
 
-    with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb)
+    with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb, end)
     {
         var orig_write = mqs[0].client_stream._write,
             the_chunk,
@@ -917,7 +930,31 @@ describe(type, function ()
             the_callback,
             count_complete = 0,
             count_incomplete = 0,
+            count_pub_error = 0,
+            count_sub_error = 0,
+            count_unsub_error = 0,
+            count_cons_error = 0,
+            ended = false,
             full_called = false;
+
+        function check_end()
+        {
+            if (ended &&
+                count_pub_error === 2993 &&
+                count_sub_error === 1 &&
+                count_unsub_error === 1 &&
+                count_cons_error === 1)
+            {
+                cb();
+            }
+            else if (count_pub_error > 2993 ||
+                     count_sub_error > 1 ||
+                     count_unsub_error > 1 ||
+                     count_cons_error > 1)
+            {
+                cb(new Error('called too many times'));
+            }
+        }
 
         mqs[0].client_stream._write = function (chunk, encoding, callback)
         {
@@ -950,15 +987,53 @@ describe(type, function ()
                 expect(count_complete).to.equal(2992);
                 expect(count_incomplete).to.equal(1);
                 expect(full_called).to.equal(true);
-                mqs[0].client_stream._write = orig_write;
-                mqs[0].client_stream._write(the_chunk, the_encoding, the_callback);
-                cb();
+                mqs[0].client.subscribe('foo', function () {}, function (err)
+                {
+                    expect(err.message).to.equal('ended before handshaken');
+                    count_sub_error += 1;
+                    check_end();
+                });
+                mqs[0].client._subs.set('foo', new Set([function () {}]));
+                mqs[0].client.unsubscribe(function (err)
+                {
+                    expect(err.message).to.equal('ended before handshaken');
+                    count_unsub_error += 1;
+                    check_end();
+                });
+                new MQlobberClient(mqs[0].client_stream).on('error', function (err)
+                {
+                    expect(err.message).to.equal('ended before handshaken');
+                    count_cons_error += 1;
+                    check_end();
+                });
+                mqs[0].server.subscribe('foo', function (err)
+                {
+                    if (err) { return cb(err); }
+                    mqs[0].client_stream._write = orig_write;
+                    mqs[0].client_stream._write(the_chunk, the_encoding, the_callback);
+                    end(function ()
+                    {
+                        ended = true;
+                        check_end();
+                    });
+                });
             }
+            else if ((count_complete + count_incomplete) > 2993)
+            {
+                cb(new Error('called too many times'));
+            }
+        }
+
+        function onpub(err)
+        {
+            expect(err.message).to.equal('ended before handshaken');
+            count_pub_error += 1;
+            check_end();
         }
 
         for (var i=0; i < 2993; i += 1)
         {
-            var duplex = mqs[0].client.publish('foo');
+            var duplex = mqs[0].client.publish('foo', onpub);
             duplex.on('handshake_sent', sent);
             duplex.end('bar');
         }
@@ -967,8 +1042,13 @@ describe(type, function ()
     with_mqs(1, 'should publish and receive work on single stream',
     function (mqs, cb)
     {
-        mqs[0].client.subscribe('foo', function (s, info)
+        mqs[0].client.subscribe('foo', function (s, info, done)
         {
+            mqs[0].server.on('ack', function ()
+            {
+                cb();
+            });
+
             expect(info.single).to.equal(true);
             expect(info.topic).to.equal('foo');
 
@@ -980,7 +1060,7 @@ describe(type, function ()
             read_all(s, function (v)
             {
                 expect(v.toString()).to.equal('bar');
-                cb();
+                done();
             });
         }, function (err)
         {
@@ -997,7 +1077,7 @@ describe(type, function ()
     {
         var calls = 0, data = '';
 
-        function check(s, info)
+        function check(s, info, done)
         {
             expect(info.single).to.equal(true);
             expect(info.topic).to.equal('foo');
@@ -1010,20 +1090,21 @@ describe(type, function ()
                 var str = v.toString();
                 expect(str).to.equal('bar');
                 data += str;
+                done();
             });
 
             calls += 1;
         }
 
-        mqs[0].client.subscribe('foo', function (s, info)
+        mqs[0].client.subscribe('foo', function (s, info, done)
         {
-            check(s, info);
+            check(s, info, done);
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[0].client.subscribe('foo', function (s, info)
+            mqs[0].client.subscribe('foo', function (s, info, done)
             {
-                check(s, info);
+                check(s, info, done);
             }, function (err)
             {
                 if (err) { return cb(err); }
@@ -1046,7 +1127,7 @@ describe(type, function ()
     {
         var calls = 0, data = '';
 
-        function check(s, info)
+        function check(s, info, done)
         {
             expect(info.single).to.equal(true);
             expect(info.topic).to.equal('foo');
@@ -1059,20 +1140,21 @@ describe(type, function ()
                 var str = v.toString();
                 expect(str).to.equal('bar');
                 data += str;
+                done();
             });
 
             calls += 1;
         }
 
-        mqs[0].client.subscribe('foo', function (s, info)
+        mqs[0].client.subscribe('foo', function (s, info, done)
         {
-            check(s, info);
+            check(s, info, done);
         }, function (err)
         {
             if (err) { return cb(err); }
-            mqs[1].client.subscribe('foo', function (s, info)
+            mqs[1].client.subscribe('foo', function (s, info, done)
             {
-                check(s, info);
+                check(s, info, done);
             }, function (err)
             {
                 if (err) { return cb(err); }
@@ -1488,8 +1570,13 @@ describe(type, function ()
     with_mqs(1, 'should publish and receive work with ttl',
     function (mqs, cb)
     {
-        mqs[0].client.subscribe('foo', function (s, info)
+        mqs[0].client.subscribe('foo', function (s, info, done)
         {
+            mqs[0].server.on('ack', function ()
+            {
+                cb();
+            });
+
             expect(info.single).to.equal(true);
             expect(info.topic).to.equal('foo');
 
@@ -1501,7 +1588,7 @@ describe(type, function ()
             read_all(s, function (v)
             {
                 expect(v.toString()).to.equal('bar');
-                cb();
+                done();
             });
         }, function (err)
         {
@@ -1692,7 +1779,7 @@ describe(type, function ()
                 {
                     var n = Math.floor(i / topics_per_mq);
 
-                    function handler(s, info)
+                    function handler(s, info, done)
                     {
                         s.setMaxListeners(0);
 
@@ -1702,6 +1789,8 @@ describe(type, function ()
                         read_all(pthru, function (v)
                         {
                             expect(v.toString()).to.equal(info.topic);
+
+                            done();
 
                             if (info.single)
                             {
@@ -1747,7 +1836,7 @@ describe(type, function ()
                                     });
                                 });
 
-                                cb();
+                                setTimeout(cb, 2000);
                             }
                             else if ((count > total) ||
                                      (count_single > expected_single.size * rounds))
@@ -2495,6 +2584,78 @@ describe(type, function ()
                 if (err) { return cb(err); }
             }).end('bar');
         });
+    });
+
+    with_mqs(1, 'should emit error when end before handshake on message', function (mqs, cb)
+    {
+        mqs[0].server.fsq.once('warning', function (err)
+        {
+            expect(err.message).to.equal('ended before handshaken');
+            cb();
+        });
+
+        mqs[0].server.on('message', function (data, info, multiplex, done)
+        {
+            multiplex().push(null);
+        });
+
+        mqs[0].client.subscribe('foo', function () {}, function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].client.publish('foo', { single: true }, function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
+
+        });
+    });
+
+    with_mqs(1, 'should emit error when end before handshake on server', function (mqs, cb)
+    {
+        function check()
+        {
+            var sle = mqs[0].server.last_error,
+                cle = mqs[0].client.last_error;
+
+            if (sle && cle)
+            {
+                expect(sle.message).to.equal('ended before handshaken');
+                expect(cle.message).to.equal('ended before handshaken');
+                cb();
+                return true;
+            }
+
+            return false;
+        }
+
+        if (!check())
+        {
+            mqs[0].server.on('error', check);
+            mqs[0].client.on('error', check);
+        }
+    },
+    it,
+    {
+        skip_client_handshake: true,
+        onmade: function (info)
+        {
+            info.server.on('error', function (err)
+            {
+                this.last_error = err;
+            });
+
+            info.client.on('error', function (err)
+            {
+                this.last_error = err;
+            });
+
+            info.server_stream.on('end', function ()
+            {
+                this.end();
+            });
+
+            info.client_stream.end();
+        }
     });
 });
 };
