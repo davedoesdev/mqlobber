@@ -2657,5 +2657,37 @@ describe(type, function ()
             info.client_stream.end();
         }
     });
+
+    with_mqs(1, 'client should send back error for single message if no handlers are registered', function (mqs, cb)
+    {
+        var client_warning;
+
+        mqs[0].client.on('warning', function (err)
+        {
+            client_warning = err.message;
+        });
+
+        mqs[0].server.on('warning', function (err)
+        {
+            expect(client_warning).to.equal('no handlers');
+            expect(err.message).to.equal('client error');
+            cb();
+        });
+
+        mqs[0].server.on('ack', function ()
+        {
+            cb(new Error('should not be called'));
+        });
+
+        mqs[0].server.subscribe('foo', function (err)
+        {
+            if (err) { return cb(err); }
+            mqs[0].server.fsq.publish('foo',
+            {
+                single: true,
+                ttl: 2000
+            }).end();
+        });
+    });
 });
 };
