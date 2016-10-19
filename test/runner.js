@@ -2689,5 +2689,57 @@ describe(type, function ()
             }).end();
         });
     });
+
+    it('should emit error if carrier stream ends immediately', function (cb)
+    {
+        connect_and_accept(function (cs, ss)
+        {
+            var ended = false,
+                errored = false;
+
+            function check()
+            {
+                if (ended && errored)
+                {
+                    cb();
+                }
+            }
+
+            cs.on('end', function ()
+            {
+                expect(ended).to.equal(false);
+                ended = true;
+                check();
+            });
+
+            ss.on('end', function ()
+            {
+                this.end();
+            });
+
+            cs.on('readable', function ()
+            {
+                this.read();
+            });
+
+            ss.on('readable', function ()
+            {
+                this.read();
+            });
+
+            cs.end();
+
+            var mqclient = new MQlobberClient(cs);
+
+            mqclient.on('error', function (err)
+            {
+                expect(errored).to.equal(false);
+                expect(err.message).to.equal(
+                    ended ? 'ended before handshaken' : 'write after end');
+                errored = true;
+                check();
+            });
+        });
+    });
 });
 };
