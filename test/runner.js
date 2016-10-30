@@ -191,7 +191,7 @@ describe(type, function ()
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
-            expect(expires).to.be.below(now + timeout * 1000);
+            expect(expires).to.be.at.most(now + timeout * 1000);
 
             read_all(s, function (v)
             {
@@ -1055,7 +1055,7 @@ describe(type, function ()
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
-            expect(expires).to.be.below(now + timeout * 2 * 1000);
+            expect(expires).to.be.at.most(now + timeout * 2 * 1000);
 
             read_all(s, function (v)
             {
@@ -1331,7 +1331,7 @@ describe(type, function ()
             var now = Date.now();
 
             expect(info.expires).to.be.above(now);
-            expect(info.expires).to.be.below(now + timeout * 1000);
+            expect(info.expires).to.be.at.most(now + timeout * 1000);
 
             expect(multiplex).to.be.an.instanceof(Function);
 
@@ -1363,7 +1363,7 @@ describe(type, function ()
             var now = Date.now();
 
             expect(info.expires).to.be.above(now);
-            expect(info.expires).to.be.below(now + timeout * 1000);
+            expect(info.expires).to.be.at.most(now + timeout * 1000);
 
             expect(done).to.be.an.instanceof(Function);
 
@@ -1426,7 +1426,7 @@ describe(type, function ()
             var now = Date.now();
 
             expect(info.expires).to.be.above(now);
-            expect(info.expires).to.be.below(now + timeout * 2 * 1000);
+            expect(info.expires).to.be.at.most(now + timeout * 2 * 1000);
 
             expect(done).to.be.an.instanceof(Function);
 
@@ -1437,16 +1437,16 @@ describe(type, function ()
 
             data.pipe(multiplex());
 
-            done(new Error('dummy'));
+            done(new Error('dummy2'));
         });
 
         mqs[0].client.on('warning', function (err)
         {
             expect(err.message).to.equal('dummy');
 
-            expect(msg1).to.equal('dummy');
-            expect(msg2).to.equal('dummy');
-            expect(msg3).to.equal('dummy');
+            expect(msg1).to.equal('dummy2');
+            expect(msg2).to.equal('dummy2');
+            expect(msg3).to.equal('dummy2');
 
             if (cb)
             {
@@ -1463,7 +1463,7 @@ describe(type, function ()
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
-            expect(expires).to.be.below(now + timeout * 2 * 1000);
+            expect(expires).to.be.at.most(now + timeout * 2 * 1000);
 
             read_all(s, function (v)
             {
@@ -1502,7 +1502,7 @@ describe(type, function ()
             var now = Date.now();
 
             expect(info.expires).to.be.above(now);
-            expect(info.expires).to.be.below(now + timeout * 2 * 1000);
+            expect(info.expires).to.be.at.most(now + timeout * 2 * 1000);
 
             expect(done).to.be.an.instanceof(Function);
 
@@ -1531,7 +1531,7 @@ describe(type, function ()
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
-            expect(expires).to.be.below(now + timeout * 2 * 1000);
+            expect(expires).to.be.at.most(now + timeout * 2 * 1000);
 
             msgs = [];
             done(new Error('dummy'));
@@ -1543,8 +1543,9 @@ describe(type, function ()
                                      'server warning',
                                      'data error']);
 
-                // bpmux will already have sent the data
-                expect(v.toString()).to.equal('bar');
+                // depending how soon the error gets to the server,
+                // the data may already have been sent
+                expect(v.toString()).to.be.oneOf(['', 'bar']);
 
                 mqs[0].server.fsq.once('warning', function (err)
                 {
@@ -1583,7 +1584,7 @@ describe(type, function ()
             var now = Date.now(), expires = info.expires * 1000;
 
             expect(expires).to.be.above(now);
-            expect(expires).to.be.below(now + timeout * 1000);
+            expect(expires).to.be.at.most(now + timeout * 1000);
 
             read_all(s, function (v)
             {
@@ -2291,12 +2292,13 @@ describe(type, function ()
     with_mqs(1, 'should tell server when processing work errors',
     function (mqs, cb)
     {
-        mqs[0].server.fsq.on('warning', function (err)
+        mqs[0].server.fsq.on('warning', function warning(err)
         {
             expect(err.message).to.equal('client error');
 
             if (count === 3)
             {
+                this.removeListener('warning', warning);
                 cb();
             }
         });
@@ -2310,7 +2312,7 @@ describe(type, function ()
 
         mqs[0].client.subscribe('foo', function (s, info, done)
         {
-            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
                 expect(hdata).to.eql(new Buffer([1]));
@@ -2400,7 +2402,7 @@ describe(type, function ()
     with_mqs(1, 'server should error when work handshake is empty',
     function (mqs, cb)
     {
-        mqs[0].server.fsq.on('warning', function (err)
+        mqs[0].server.fsq.once('warning', function (err)
         {
             expect(err.message).to.equal('buffer too small');
             cb();
@@ -2410,7 +2412,7 @@ describe(type, function ()
         {
             expect(info.single).to.equal(false);
 
-            mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+            mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
                 expect(hdata).to.eql(new Buffer(0));
