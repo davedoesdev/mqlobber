@@ -211,7 +211,7 @@ supply a [`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#str
 
 - `{Object} [options]` Configuration options. This is passed down to [`QlobberDedup`](https://github.com/davedoesdev/qlobber#qlobberdedupoptions)
 (which matches messages received from the server to handlers) and
-[`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrrier-options)
+[`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrier-options)
 (which multiplexes message streams over the connection to the
 server). It also supports the following additional property:
 
@@ -392,7 +392,7 @@ the file system.
 How the connection is made is up to the caller - it just has to supply a
 [`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
 
-- `{Object} [options]` Configuration options. This is passed down to [`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrrier-options)
+- `{Object} [options]` Configuration options. This is passed down to [`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrier-options)
 (which multiplexes message streams over the connection to the
 client). It also supports the following additional property:
 
