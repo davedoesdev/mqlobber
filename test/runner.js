@@ -1608,7 +1608,7 @@ describe(type, function ()
     with_mqs(1, 'server should pass on fsq errors in its subscribe method',
     function (mqs, cb)
     {
-        mqs[0].server.fsq.subscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.subscribe = function (topic, handler, options, cb)
         {
             cb(new Error('test'));
         };
@@ -1625,7 +1625,7 @@ describe(type, function ()
     {
         this.sinon.stub(console, 'error');
 
-        mqs[0].server.fsq.subscribe = function (topic, handler, cb)
+        mqs[0].server.fsq.subscribe = function (topic, handler, options, cb)
         {
             cb(new Error('test'));
         };

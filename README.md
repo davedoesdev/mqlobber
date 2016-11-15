@@ -185,7 +185,7 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberclienteventserrorerr-obj"></a>[MQlobberClient.events.error](#mqlobberclienteventserrorerr-obj)
 - <a name="toc_mqlobberclienteventswarningerr-obj"></a>[MQlobberClient.events.warning](#mqlobberclienteventswarningerr-obj)
 - <a name="toc_mqlobberserverfsq-stream-options"></a>[MQlobberServer](#mqlobberserverfsq-stream-options)
-- <a name="toc_mqlobberserverprototypesubscribetopic-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-cb)
+- <a name="toc_mqlobberserverprototypesubscribetopic-options-cb"></a><a name="toc_mqlobberserverprototype"></a>[MQlobberServer.prototype.subscribe](#mqlobberserverprototypesubscribetopic-options-cb)
 - <a name="toc_mqlobberserverprototypeunsubscribetopic-cb"></a>[MQlobberServer.prototype.unsubscribe](#mqlobberserverprototypeunsubscribetopic-cb)
 - <a name="toc_mqlobberservereventssubscribe_requestedtopic-cb"></a><a name="toc_mqlobberserverevents"></a>[MQlobberServer.events.subscribe_requested](#mqlobberservereventssubscribe_requestedtopic-cb)
 - <a name="toc_mqlobberservereventsunsubscribe_requestedtopic-cb"></a>[MQlobberServer.events.unsubscribe_requested](#mqlobberservereventsunsubscribe_requestedtopic-cb)
@@ -403,7 +403,7 @@ client). It also supports the following additional property:
 
 <a name="mqlobberserverprototype"></a>
 
-## MQlobberServer.prototype.subscribe(topic, [cb])
+## MQlobberServer.prototype.subscribe(topic, [options], [cb])
 
 > Subscribe the connected client to messages.
 
@@ -416,6 +416,11 @@ exactly one word in a topic or `#` to match zero or more words. For example,
 They can be changed when [constructing the `QlobberFSQ` instance]
 (https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) passed to
 `MQlobberServer`'s [constructor](#mqlobberserverfsq-stream-options).
+
+- `{Object} [options]` Optional settings for this subscription: 
+  - `{Boolean} subscribe_to_existing` If `true` then the client will be sent
+    any existing, unexpired messages that match `topic`, as well as new ones.
+    Defaults to `false` (only new messages).
 
 - `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
 
@@ -447,7 +452,7 @@ Emitted by a `MQlobberServer` object when it receives a request from its peer
 `MQlobberClient` object to subscribe to messages published to a topic.
 
 If there are no listeners on this event, the default action is to call
-[`subscribe(topic, cb)`](#mqlobberserverprototypesubscribetopic-cb).
+[`subscribe(topic, cb)`](#mqlobberserverprototypesubscribetopic-options-cb).
 If you add a listener on this event, the default action will _not_ be called.
 This gives you the opportunity to filter subscription requests in the
 application.
@@ -456,11 +461,11 @@ application.
 
 - `{String} topic` The topic to which the client is asking to subscribe. 
 - `{Function} cb` Function to call after processing the subscription request. This function _must_ be called even if you don't call
-[`subscribe`](#mqlobberserverprototypesubscribetopic-cb) yourself.
+[`subscribe`](#mqlobberserverprototypesubscribetopic-options-cb) yourself.
 It takes a single argument:
 
   - `{Object} err` If `null` then a success status is returned to the client
-    (whether you called [`subscribe`](#mqlobberserverprototypesubscribetopic-cb) or not).
+    (whether you called [`subscribe`](#mqlobberserverprototypesubscribetopic-options-cb) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
