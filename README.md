@@ -407,6 +407,9 @@ client). It also supports the following additional property:
 
 > Subscribe the connected client to messages.
 
+Note: If the client is already subscribed to `topic`, this function will do
+nothing (other than call `cb`).
+
 **Parameters:**
 
 - `{String} topic` Which messages the client should receive. Message topics are split into words using `.` as the separator. You can use `*` to match
