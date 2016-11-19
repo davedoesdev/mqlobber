@@ -3,6 +3,7 @@
 
 var stream = require('stream'),
     util = require('util'),
+    crypto = require('crypto'),
     path = require('path'),
     async = require('async'),
     rimraf = require('rimraf'),
@@ -184,6 +185,7 @@ describe(type, function ()
         mqs[0].client.subscribe('foo', function (s, info)
         {
             expect(info.single).to.equal(false);
+            expect(info.existing).to.equal(false);
             expect(info.topic).to.equal('foo');
 
             expect(this).to.equal(mqs[0].client);
@@ -198,12 +200,14 @@ describe(type, function ()
                 expect(v.toString()).to.equal('bar');
                 cb();
             });
-        }, function (err)
+        }, function (err, data)
         {
             if (err) { return cb(err); }
-            mqs[0].client.publish('foo', function (err)
+            expect(data).to.equal(undefined);
+            mqs[0].client.publish('foo', function (err, data)
             {
                 if (err) { return cb(err); }
+                expect(data).to.equal(undefined);
             }).end('bar');
         });
     });
@@ -383,9 +387,10 @@ describe(type, function ()
             mqs[0].client.subscribe('foo', handler2, function (err)
             {
                 if (err) { return cb(err); }
-                mqs[0].client.unsubscribe('foo', handler2, function (err)
+                mqs[0].client.unsubscribe('foo', handler2, function (err, data)
                 {
                     if (err) { return cb(err); }
+                    expect(data).to.equal(undefined);
                     mqs[0].client.publish('foo', function (err)
                     {
                         if (err) { return cb(err); }
@@ -2741,6 +2746,181 @@ describe(type, function ()
                 errored = true;
                 check();
             });
+        });
+    });
+
+    with_mqs(1, 'should be able to supply extra data argument to done', function (mqs, cb)
+    {
+        var buf1 = crypto.randomBytes(64),
+            buf2 = crypto.randomBytes(128),
+            buf3 = crypto.randomBytes(256);
+
+        mqs[0].server.on('subscribe_requested', function (topic, done)
+        {
+            expect(topic).to.equals('foo');
+            this.subscribe(topic,
+            {
+                subscribe_to_existing: true
+            }, function (err)
+            {
+                done(err, err ? undefined : buf1);
+            });
+        });
+
+        mqs[0].server.on('unsubscribe_requested', function (topic, done)
+        {
+            expect(topic).to.equals('foo');
+            this.unsubscribe(topic, function (err)
+            {
+                done(err, err ? undefined : buf2);
+            });
+        });
+
+        mqs[0].server.on('publish_requested', function (topic, duplex, options, done)
+        {
+            expect(topic).to.equals('foo');
+            duplex.pipe(this.fsq.publish(topic, options, function (err)
+            {
+                done(err, err ? undefined : buf3);
+            }));
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                mqs[0].client.unsubscribe('foo', undefined, function (err, data)
+                {
+                    if (err) { return cb(err); }
+                    expect(data.equals(buf2)).to.equal(true);
+                    cb();
+                });
+            });
+        }, function (err, data)
+        {
+            if (err) { return cb(err); }
+            expect(data.equals(buf1)).to.equal(true);
+            mqs[0].client.publish('foo', function (err, data)
+            {
+                if (err) { return cb(err); }
+                expect(data.equals(buf3)).to.equal(true);
+            }).end('bar');
+        });
+    });
+
+    with_mqs(1, 'should be able to subscribe to existing messages', function (mqs, cb)
+    {
+        var handler1_called = 0,
+            handler2_called = 0,
+            handler3_called = 0;
+
+        function check()
+        {
+            // Because neither server or client have separate handlers for each
+            // subscription, all subscribers (which match the topic) get
+            // existing messages when a new subscription to existing messages
+            // is made. The caller should (a) ensure subcriptions not to
+            // existing messages don't get given existing messages (e.g. by
+            // using the extra data argument to done, as shown below);
+            // (b) not allowing subscriptions to overlapping topics.
+
+            if ((handler1_called === 3) &&
+                (handler2_called === 2) &&
+                (handler3_called === 1))
+            {
+                return cb();
+            }
+
+            if ((handler1_called > 3) ||
+                (handler2_called > 2) ||
+                (handler3_called > 1))
+            {
+                return cb(new Error('called too many times'));
+            }
+        }
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.topic).to.equal('foo');
+
+            handler1_called += 1;
+            check();
+            if (handler1_called > 1)
+            {
+                return;
+            }
+
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+
+                mqs[0].server.on('subscribe_requested', function (topic, done)
+                {
+                    expect(topic).to.be.oneOf(['foo.#', '#.foo']);
+                    this.subscribe(topic,
+                    {
+                        subscribe_to_existing: true
+                    }, function (err)
+                    {
+                        done(err, err ? undefined : new Buffer([1]));
+                    });
+                });
+                
+                mqs[0].client.subscribe('foo.#', function (s, info)
+                {
+                    expect(info.topic).to.equal('foo');
+                    expect(info.existing).to.equal(true);
+
+                    var pthru = new stream.PassThrough();
+                    s.pipe(pthru);
+                    read_all(pthru, function (v)
+                    {
+                        expect(v.toString()).to.equal('bar');
+
+                        handler2_called += 1;
+                        check();
+                        if (handler2_called > 1)
+                        {
+                            return;
+                        }
+
+                        mqs[0].client.subscribe('#.foo', function (s, info)
+                        {
+                            expect(info.topic).to.equal('foo');
+                            expect(info.existing).to.equal(true);
+
+                            var pthru = new stream.PassThrough();
+                            s.pipe(pthru);
+                            read_all(pthru, function (v)
+                            {
+                                expect(v.toString()).to.equal('bar');
+                                handler3_called += 1;
+                                check();
+                            });
+                        }, function (err, data)
+                        {
+                            if (err) { return cb(err); }
+                            expect(data.length).to.equal(1);
+                            expect(data[0]).to.equal(1);
+                        });
+                    });
+                }, function (err, data)
+                {
+                    if (err) { return cb(err); }
+                    expect(data.length).to.equal(1);
+                    expect(data[0]).to.equal(1);
+                });
+            });
+        }, function (err, data)
+        {
+            if (err) { return cb(err); }
+            expect(data).to.equal(undefined);
+            mqs[0].client.publish('foo', function (err)
+            {
+                if (err) { return cb(err); }
+            }).end('bar');
         });
     });
 });
