@@ -2821,10 +2821,7 @@ describe(type, function ()
             // Because neither server or client have separate handlers for each
             // subscription, all subscribers (which match the topic) get
             // existing messages when a new subscription to existing messages
-            // is made. The caller should (a) ensure subcriptions not to
-            // existing messages don't get given existing messages (e.g. by
-            // using the extra data argument to done, as shown below);
-            // (b) not allowing subscriptions to overlapping topics.
+            // is made.
 
             if ((handler1_called === 3) &&
                 (handler2_called === 2) &&
