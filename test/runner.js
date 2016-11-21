@@ -998,7 +998,7 @@ describe(type, function ()
                     count_sub_error += 1;
                     check_end();
                 });
-                mqs[0].client._subs.set('foo', new Set([function () {}]));
+                mqs[0].client.subs.set('foo', new Set([function () {}]));
                 mqs[0].client.unsubscribe(function (err)
                 {
                     expect(err.message).to.equal('ended before handshaken');
