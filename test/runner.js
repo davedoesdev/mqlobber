@@ -927,6 +927,26 @@ describe(type, function ()
         });
     });
 
+    with_mqs(1, 'should emit warning if max number of multiplexed streams', function (mqs, cb)
+    {
+        mqs[0].server.on('warning', function (err)
+        {
+            expect(err.message).to.equal('full');
+            cb();
+        });
+
+        mqs[0].client.subscribe('foo', function ()
+        {
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            for (var i = 0; i < 11; i += 1)
+            {
+                mqs[0].server.fsq.publish('foo').end('bar');
+            }
+        });
+    }, it, { max_open: 10 });
+
     with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb, end)
     {
         var orig_write = mqs[0].client_stream._write,
@@ -1288,7 +1308,7 @@ describe(type, function ()
 
         mqs[0].server.on('backoff', function ()
         {
-            expect(count_complete).to.equal(2517);
+            expect(count_complete).to.equal(3980);
             expect(count_incomplete).to.equal(0); // only counted below
             full_called = true;
         });
@@ -1303,9 +1323,9 @@ describe(type, function ()
             {
                 count_incomplete += 1;
             }
-            if ((count_complete + count_incomplete) == 2518)
+            if ((count_complete + count_incomplete) == 3981)
             {
-                expect(count_complete).to.equal(2517);
+                expect(count_complete).to.equal(3980);
                 expect(count_incomplete).to.equal(1);
                 expect(full_called).to.equal(true);
                 mqs[0].server_stream._write = orig_write;
@@ -1320,7 +1340,7 @@ describe(type, function ()
             done();
         });
 
-        for (var i=0; i < 2518; i += 1)
+        for (var i=0; i < 3981; i += 1)
         {
             mqs[0].client.publish('foo').end('bar');
         }
@@ -2253,12 +2273,12 @@ describe(type, function ()
                 mqs[0].client.unsubscribe('foo', undefined, function (err)
                 {
                     if (err) { return cb(err); }
-                    process.nextTick(function ()
+                    setTimeout(function ()
                     {
                         expect(mqs[0].client.mux.duplexes.size).to.equal(0);
                         expect(mqs[0].server.mux.duplexes.size).to.equal(0);
                         cb();
-                    });
+                    }, 500);
                 });
             });
         }, function (err)
