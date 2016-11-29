@@ -1756,7 +1756,7 @@ describe(type, function ()
     with_mqs(1, 'server should callback without error when unsubscribing from topic not subscribed to',
     function (mqs, cb)
     {
-        expect(mqs[0].server._subs.has('foo')).to.equal(false);
+        expect(mqs[0].server.subs.has('foo')).to.equal(false);
         mqs[0].server.unsubscribe('foo', cb);
     });
 
