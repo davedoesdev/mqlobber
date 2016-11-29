@@ -2560,12 +2560,14 @@ describe(type, function ()
         });
     });
 
-    with_mqs(1, 'should emit pre_subscribe_requested and pre_publish_requested events', function (mqs, cb)
+    with_mqs(1, 'should emit pre_subscribe_requested, pre_publish_requested and pre_unsubscribe_requested events', function (mqs, cb)
     {
         var presubreq_called = false,
             prepubreq_called = false,
+            preunsubreq_called = false,
             subreq_called = false,
-            pubreq_called = false;
+            pubreq_called = false,
+            unsubreq_called = false;
 
         mqs[0].server.on('pre_subscribe_requested', function (topic, done)
         {
@@ -2577,6 +2579,18 @@ describe(type, function ()
         mqs[0].server.on('subscribe_requested', function ()
         {
             subreq_called = true;
+        });
+
+        mqs[0].server.on('pre_unsubscribe_requested', function (topic, done)
+        {
+            preunsubreq_called = true;
+            expect(topic).to.equal('foo');
+            this.unsubscribe(topic, done);
+        });
+
+        mqs[0].server.on('unsubscribe_requested', function ()
+        {
+            unsubreq_called = true;
         });
 
         mqs[0].server.on('pre_publish_requested', function (topic, duplex, options, done)
@@ -2594,14 +2608,21 @@ describe(type, function ()
         mqs[0].client.subscribe('foo', function (s, info)
         {
             expect(presubreq_called).to.equal(true);
+            expect(preunsubreq_called).to.equal(false);
             expect(prepubreq_called).to.equal(true);
             expect(subreq_called).to.equal(false);
+            expect(unsubreq_called).to.equal(false);
             expect(pubreq_called).to.equal(false);
             expect(info.topic).to.equal('foo');
             read_all(s, function (v)
             {
                 expect(v.toString()).to.equal('bar');
-                cb();
+                mqs[0].client.unsubscribe('foo', undefined, function (err)
+                {
+                    expect(preunsubreq_called).to.equal(true);
+                    expect(unsubreq_called).to.equal(false);
+                    cb();
+                });
             });
         }, function (err)
         {
