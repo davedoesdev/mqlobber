@@ -481,6 +481,15 @@ describe(type, function ()
 
     with_mqs(1, 'client should warn about empty handshake data', function (mqs, cb)
     {
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
         mqs[0].client.on('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
@@ -488,11 +497,27 @@ describe(type, function ()
             cb();
         });
 
-        mqs[0].server.mux.multiplex();
+        mqs[0].server.mux.multiplex().on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
     });
 
     with_mqs(1, 'client should warn about short handshake data', function (mqs, cb)
     {
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
         mqs[0].client.on('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
@@ -503,6 +528,13 @@ describe(type, function ()
         mqs[0].server.mux.multiplex(
         {
             handshake_data: new Buffer([2])
+        }).on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
         });
     });
 
@@ -929,6 +961,15 @@ describe(type, function ()
 
     with_mqs(1, 'should emit warning if max number of multiplexed streams', function (mqs, cb)
     {
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
         mqs[0].server.on('warning', function (err)
         {
             expect(err.message).to.equal('full');
@@ -958,24 +999,51 @@ describe(type, function ()
             count_pub_error = 0,
             count_sub_error = 0,
             count_unsub_error = 0,
-            count_cons_error = 0,
             ended = false,
             full_called = false;
+/*
+        var orig_error = console.error;
+        console.error = function ()
+        {
+            orig_error.apply(this, arguments);
+            var err = new Error();
+            err.name = 'Trace';
+            err.message = require('util').format.apply(this, arguments);
+            Error.captureStackTrace(err, console.error);
+            orig_error.call(this, err.stack);
+        };
+*/
+        mqs[0].client.on('warning', function (err)
+        {
+            expect(err.message).to.equal('carrier stream ended before end message received');
+        });
+
+        mqs[0].server.on('warning', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream ended before end message received',
+                'carrier stream finished before duplex finished'
+            ]);
+        });
+
+        mqs[0].server.fsq.on('warning', function (err)
+        {
+            expect(err.message).to.equal('carrier stream finished before duplex finished');
+        });
 
         function check_end()
         {
             if (ended &&
                 count_pub_error === 2993 &&
                 count_sub_error === 1 &&
-                count_unsub_error === 1 &&
-                count_cons_error === 1)
+                count_unsub_error === 1)
             {
                 cb();
             }
             else if (count_pub_error > 2993 ||
                      count_sub_error > 1 ||
-                     count_unsub_error > 1 ||
-                     count_cons_error > 1)
+                     count_unsub_error > 1)
             {
                 cb(new Error('called too many times'));
             }
@@ -1014,21 +1082,15 @@ describe(type, function ()
                 expect(full_called).to.equal(true);
                 mqs[0].client.subscribe('foo', function () {}, function (err)
                 {
-                    expect(err.message).to.equal('ended before handshaken');
+                    expect(err.message).to.equal('carrier stream ended before end message received');
                     count_sub_error += 1;
                     check_end();
                 });
                 mqs[0].client.subs.set('foo', new Set([function () {}]));
                 mqs[0].client.unsubscribe(function (err)
                 {
-                    expect(err.message).to.equal('ended before handshaken');
+                    expect(err.message).to.equal('carrier stream ended before end message received');
                     count_unsub_error += 1;
-                    check_end();
-                });
-                new MQlobberClient(mqs[0].client_stream).on('error', function (err)
-                {
-                    expect(err.message).to.equal('ended before handshaken');
-                    count_cons_error += 1;
                     check_end();
                 });
                 mqs[0].server.subscribe('foo', function (err)
@@ -1051,7 +1113,7 @@ describe(type, function ()
 
         function onpub(err)
         {
-            expect(err.message).to.equal('ended before handshaken');
+            expect(err.message).to.equal('carrier stream finished before duplex finished');
             count_pub_error += 1;
             check_end();
         }
@@ -1201,6 +1263,15 @@ describe(type, function ()
     {
         this.sinon.stub(console, 'error');
 
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
         setTimeout(function ()
         {
             expect(console.error.calledOnce).to.equal(true);
@@ -1208,24 +1279,38 @@ describe(type, function ()
             cb();
         }.bind(this), 1000);
 
-        mqs[0].server.mux.multiplex();
+        mqs[0].server.mux.multiplex().on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
     }, it, { sinon: true });
 
     with_mqs(1, 'server should warn about empty handshake data', function (mqs, cb)
     {
-        mqs[0].server.on('warning', function (err, duplex)
+        mqs[0].server.once('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
             expect(duplex).to.be.an.instanceof(stream.Duplex);
             cb();
         });
 
-        mqs[0].client.mux.multiplex();
+        mqs[0].client.mux.multiplex().on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
     });
 
     with_mqs(1, 'server should warn about short handshake data (no flags)', function (mqs, cb)
     {
-        mqs[0].server.on('warning', function (err, duplex)
+        mqs[0].server.once('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
             expect(duplex).to.be.an.instanceof(stream.Duplex);
@@ -1235,12 +1320,19 @@ describe(type, function ()
         mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([3])
+        }).on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
         });
     });
 
     with_mqs(1, 'server should warn about short handshake data (no ttl)', function (mqs, cb)
     {
-        mqs[0].server.on('warning', function (err, duplex)
+        mqs[0].server.once('warning', function (err, duplex)
         {
             expect(err.message).to.equal('buffer too small');
             expect(duplex).to.be.an.instanceof(stream.Duplex);
@@ -1250,12 +1342,19 @@ describe(type, function ()
         mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([3, 2])
+        }).on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
         });
     });
 
     with_mqs(1, 'should warn about unknown operation type', function (mqs, cb)
     {
-        mqs[0].server.on('warning', function (err, duplex)
+        mqs[0].server.once('warning', function (err, duplex)
         {
             expect(err.message).to.equal('unknown type: 100');
             expect(duplex).to.be.an.instanceof(stream.Duplex);
@@ -1265,6 +1364,13 @@ describe(type, function ()
         mqs[0].client.mux.multiplex(
         {
             handshake_data: new Buffer([100])
+        }).on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
         });
     });
 
@@ -1279,7 +1385,14 @@ describe(type, function ()
             cb();
         }.bind(this), 1000);
 
-        mqs[0].client.mux.multiplex();
+        mqs[0].client.mux.multiplex().on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
     }, it, { sinon: true });
 
     with_mqs(1, 'should emit full event when server handshakes are backed up', function (mqs, cb)
@@ -2303,7 +2416,8 @@ describe(type, function ()
                 cb();
             });
 
-            done();
+            // give time for client to get stream end
+            setImmediate(done);
         }, function (err)
         {
             if (err) { return cb(err); }
@@ -2312,7 +2426,7 @@ describe(type, function ()
                 if (err) { return cb(err);  }
             }).end('bar');
         });
-    });
+    }, it);
 
     with_mqs(1, 'should tell server when processing work errors',
     function (mqs, cb)
@@ -2482,7 +2596,8 @@ describe(type, function ()
                 cb();
             });
 
-            done();
+            // give time for client to get end
+            setImmediate(done);
         }, function (err)
         {
             if (err) { return cb(err); }
@@ -2647,6 +2762,15 @@ describe(type, function ()
             multiplex().push(null);
         });
 
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
         mqs[0].client.subscribe('foo', function () {}, function (err)
         {
             if (err) { return cb(err); }
@@ -2654,21 +2778,100 @@ describe(type, function ()
             {
                 if (err) { return cb(err); }
             }).end('bar');
-
         });
+    });
+
+    with_mqs(1, 'should emit error when end before handshake on client', function (mqs, cb)
+    {
+        function intercept()
+        {
+            for (var duplex of mqs[0].client.mux.duplexes.values())
+            {
+                duplex.removeAllListeners('handshake');
+                duplex.on('handshake', function ()
+                {
+                    this.push(null);
+                });
+            }
+        }
+
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
+        function handler()
+        {
+            cb(new Error('should not be called'));
+        }
+
+        mqs[0].client.subscribe('foo', handler, function (err)
+        {
+            expect(err.message).to.equal('ended before handshaken');
+            mqs[0].client.publish('foo', function (err)
+            {
+                expect(err.message).to.equal('ended before handshaken');
+                mqs[0].client.subs.set('foo', new Set([handler]));
+                mqs[0].client.unsubscribe('foo', handler, function (err)
+                {
+                    expect(err.message).to.equal('ended before handshaken');
+                    cb();
+                });
+                intercept();
+            }).end('bar');
+            intercept();
+        });
+        intercept();
+    });
+
+    with_mqs(1, 'should emit error when end before handshake on client initially', function (mqs, cb)
+    {
+        setTimeout(function ()
+        {
+            expect(mqs[0].client.last_error.message).to.equal('ended before handshaken');
+            cb();
+        }, 500);
+    },
+    it,
+    {
+        skip_client_handshake: true,
+        onmade: function (info)
+        {
+            info.client.mux.removeAllListeners('handshake');
+            info.client.mux.on('handshake', function (duplex)
+            {
+                duplex.push(null);
+            });
+            info.client.on('error', function (err)
+            {
+                this.last_error = err;
+            });
+        }
     });
 
     with_mqs(1, 'should emit error when end before handshake on server', function (mqs, cb)
     {
+        var done = false;
+
         function check()
         {
+            if (done) { return; }
+                
             var sle = mqs[0].server.last_error,
                 cle = mqs[0].client.last_error;
 
             if (sle && cle)
             {
                 expect(sle.message).to.equal('ended before handshaken');
-                expect(cle.message).to.equal('ended before handshaken');
+                expect(cle.message).to.be.oneOf(
+                [
+                    'carrier stream ended before end message received',
+                    'carrier stream finished before duplex finished'
+                ]);
                 cb();
                 return true;
             }
@@ -2743,12 +2946,14 @@ describe(type, function ()
         connect_and_accept(function (cs, ss)
         {
             var ended = false,
-                errored = false;
+                errored = false,
+                done = false;
 
             function check()
             {
-                if (ended && errored)
+                if (ended && errored && !done)
                 {
+                    done = true;
                     cb();
                 }
             }
@@ -2781,9 +2986,11 @@ describe(type, function ()
 
             mqclient.on('error', function (err)
             {
-                expect(errored).to.equal(false);
-                expect(err.message).to.equal(
-                    ended ? 'ended before handshaken' : 'write after end');
+                expect(err.message).to.be.oneOf(
+                [
+                    'carrier stream ended before end message received',
+                    'write after end'
+                ]);
                 errored = true;
                 check();
             });
