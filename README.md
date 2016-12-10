@@ -399,6 +399,9 @@ client). It also supports the following additional property:
   - `{Boolean} send_expires` Whether to include message expiry time in metadata
     sent to the client. Defaults to `false`.
 
+  - `{Boolean} send_size` Whether to include message size in metadata sent to
+    then client. Defaults to `false`.
+
 <sub>Go: [TOC](#tableofcontents)</sub>
 
 <a name="mqlobberserverprototype"></a>

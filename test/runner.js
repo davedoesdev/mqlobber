@@ -95,7 +95,8 @@ describe(type, function ()
                                       options === null ? options :
                                       util._extend(
                                       {
-                                          send_expires: true
+                                          send_expires: true,
+                                          send_size: true
                                       }, options)),
                                 info = {
                                     client: cmq,
@@ -194,6 +195,8 @@ describe(type, function ()
 
             expect(expires).to.be.above(now);
             expect(expires).to.be.at.most(now + timeout * 1000);
+
+            expect(info.size).to.equal(3);
 
             read_all(s, function (v)
             {
@@ -528,6 +531,37 @@ describe(type, function ()
         mqs[0].server.mux.multiplex(
         {
             handshake_data: new Buffer([2])
+        }).on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+    });
+
+    with_mqs(1, 'client should warn about short handshake data (2)', function (mqs, cb)
+    {
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
+        mqs[0].client.on('warning', function (err, duplex)
+        {
+            expect(err.message).to.equal('buffer too small');
+            expect(duplex).to.be.an.instanceof(stream.Duplex);
+            cb();
+        });
+
+        mqs[0].server.mux.multiplex(
+        {
+            handshake_data: new Buffer([8])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
