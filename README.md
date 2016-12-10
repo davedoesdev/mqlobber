@@ -253,6 +253,9 @@ the following arguments:
       1 January 1970 00:00:00 UTC). This is only present if the server's
       [`MQlobberServer`](#mqlobberserverfsq-stream-options) instance is
       configured with `send_expires` set to `true`.
+    - `{Integer} size` Size of the message in bytes. This is only present if the
+      server's [`MQlobberServer`](#mqlobberserverfsq-stream-options) instance is
+      configured with `send_size` set to `true`.
 
   - `{Function} done` Function to call once you've handled the message. Note that calling this function is only mandatory if `info.single === true`, in order to clean up the message on the server. `done` takes one argument:
 
@@ -584,6 +587,9 @@ stream and the client.
     1 January 1970 00:00:00 UTC). This is only present if the 
     [`MQlobberServer`](#mqlobberserverfsq-stream-options) object was configured
     with `send_expires` set to `true`.
+  - `{Integer} size` Size of the message in bytes. This is only present if the
+    server's [`MQlobberServer`](#mqlobberserverfsq-stream-options) instance is
+    configured with `send_size` set to `true`.
 
 - `{Function} multiplex` Function to call in order to multiplex a new stream over the connection to the client. It returns the multiplexed stream, to which
 the data from `stream` should be written - after the application applies
