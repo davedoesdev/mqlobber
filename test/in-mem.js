@@ -47,7 +47,7 @@ function LeftDuplex()
     this.on('finish', function ()
     {
         this.right.push(null);
-    }.bind(this));
+    });
 }
 
 util.inherits(LeftDuplex, Duplex);

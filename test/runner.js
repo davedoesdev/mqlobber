@@ -1578,7 +1578,7 @@ describe(type, function ()
     with_mqs(1, 'should be able to do server callback after multiplexing',
     function (mqs, cb)
     {
-        var msg1, msg2, msg3;
+        var msg1, msg2, msg3, msg4;
 
         mqs[0].server.on('warning', function (err)
         {
@@ -1612,6 +1612,11 @@ describe(type, function ()
             done(new Error('dummy2'));
         });
 
+        mqs[0].client.on('error', function (err)
+        {
+            msg4 = err.message;
+        });
+
         mqs[0].client.on('warning', function (err)
         {
             expect(err.message).to.equal('dummy');
@@ -1619,6 +1624,7 @@ describe(type, function ()
             expect(msg1).to.equal('dummy2');
             expect(msg2).to.equal('dummy2');
             expect(msg3).to.equal('dummy2');
+            expect(msg4).to.equal('peer error');
 
             if (cb)
             {
@@ -1680,13 +1686,20 @@ describe(type, function ()
 
             data.on('error', function (err)
             {
-                expect(err.message).to.equal('client error');
+                expect(err.message).to.be.oneOf(['ended before handshaken',
+                                                 'client error']);
                 msgs.push('data error');
             });
 
             server_done = done;
 
             data.pipe(multiplex());
+        });
+
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('peer error');
+            msgs.push('client error');
         });
 
         mqs[0].client.on('warning', function (err)
@@ -1713,7 +1726,8 @@ describe(type, function ()
                 expect(msgs).to.eql(['client warning',
                                      'fsq warning',
                                      'server warning',
-                                     'data error']);
+                                     'data error',
+                                     'client error']);
 
                 // depending how soon the error gets to the server,
                 // the data may already have been sent
@@ -2476,6 +2490,11 @@ describe(type, function ()
             }
         });
 
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('peer error');
+        });
+
         mqs[0].client.on('warning', function (err)
         {
             expect(err.message).to.equal('dummy');
@@ -2579,6 +2598,11 @@ describe(type, function ()
         {
             expect(err.message).to.equal('buffer too small');
             cb();
+        });
+
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('peer error');
         });
 
         mqs[0].client.subscribe('foo', function (s, info, done)
@@ -2946,6 +2970,11 @@ describe(type, function ()
     with_mqs(1, 'client should send back error for single message if no handlers are registered', function (mqs, cb)
     {
         var client_warning;
+
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('peer error');
+        });
 
         mqs[0].client.on('warning', function (err)
         {
