@@ -2645,12 +2645,25 @@ describe(type, function ()
 
     with_mqs(1, 'should emit ack event', function (mqs, cb)
     {
+        var dack = false;
+
+        mqs[0].server.on('message', function (data, info, multiplex)
+        {
+            var s = multiplex();
+            s.on('ack', function ()
+            {
+                dack = true;
+            });
+            data.pipe(s);
+        });
+
         mqs[0].client.subscribe('foo', function (s, info, done)
         {
             mqs[0].server.on('ack', function (info)
             {
                 expect(info.single).to.equal(true);
                 expect(info.topic).to.equal('foo');
+                expect(dack).to.equal(true);
                 cb();
             });
 

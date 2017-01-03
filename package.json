@@ -35,7 +35,8 @@
   ],
   "dependencies": {
     "bpmux": "~3.1.0",
-    "qlobber": "~0.7.0"
+    "qlobber": "~0.7.0",
+    "object.assign": "~4.0.4"
   },
   "devDependencies": {
     "grunt": "~1.0.1",
