@@ -1,7 +1,7 @@
 {
   "name": "mqlobber",
   "description": "Streaming message queue with pub-sub, work queues, wildcards and back-pressure. Just Node and a filesystem required.",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "homepage": "https://github.com/davedoesdev/mqlobber",
   "author": {
     "name": "David Halls",
@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~3.1.0",
+    "bpmux": "~3.2.0",
     "qlobber": "~0.7.0",
     "object.assign": "~4.0.4"
   },
