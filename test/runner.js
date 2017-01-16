@@ -3469,7 +3469,7 @@ describe(type, function ()
 
         mqs[0].client.subscribe('foo', function ()
         {
-            done(new Error('should not be called'));
+            cb(new Error('should not be called'));
         }, function (err)
         {
             if (err) { return cb(err); }
