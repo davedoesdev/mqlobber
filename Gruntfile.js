@@ -29,34 +29,37 @@ module.exports = function (grunt)
             extraHeadingLevels: 1
         },
 
-        shell: {
+        bgShell: {
             cover: {
-                command: './node_modules/.bin/istanbul cover -x Gruntfile.js ./node_modules/.bin/grunt -- test',
+                cmd: './node_modules/.bin/istanbul cover -x Gruntfile.js ./node_modules/.bin/grunt -- test',
+                fail: true,
                 execOptions: {
-                    maxBuffer: 100000 * 1024
+                    maxBuffer: 0
                 }
             },
 
             check_cover: {
-                command: './node_modules/.bin/istanbul check-coverage --statement 100 --branch 100 --function 100 --line 100'
+                cmd: './node_modules/.bin/istanbul check-coverage --statement 100 --branch 100 --function 100 --line 100',
+                fail: true
             },
 
             coveralls: {
-                command: 'cat coverage/lcov.info | coveralls'
+                cmd: 'cat coverage/lcov.info | coveralls',
+                fail: true
             }
         }
     });
 
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-mocha-test');
-    grunt.loadNpmTasks('grunt-shell');
+    grunt.loadNpmTasks('grunt-bg-shell');
     grunt.loadNpmTasks('grunt-apidox');
 
     grunt.registerTask('lint', 'jshint');
     grunt.registerTask('test', 'mochaTest');
     grunt.registerTask('docs', ['apidox']);
-    grunt.registerTask('coverage', ['shell:cover', 'shell:check_cover']);
-    grunt.registerTask('coveralls', 'shell:coveralls');
+    grunt.registerTask('coverage', ['bgShell:cover', 'bgShell:check_cover']);
+    grunt.registerTask('coveralls', 'bgShell:coveralls');
     grunt.registerTask('default', ['lint', 'test']);
 };
 
