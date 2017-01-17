@@ -34,7 +34,7 @@
     "back-pressure"
   ],
   "dependencies": {
-    "bpmux": "~3.2.0",
+    "bpmux": "~3.3.0",
     "qlobber": "~0.7.0",
     "object.assign": "~4.0.4"
   },
