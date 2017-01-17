@@ -3333,167 +3333,171 @@ describe(type, function ()
         });
     });
 
-    with_mqs(2, 'should be able to defer to final handler if a stream errors', function (mqs, cb)
+    // https://github.com/nodejs/node/pull/7292 isn't on 0.12
+    if ((type != 'in-memory') || (parseFloat(process.versions.node) > 0.12))
     {
-        var peer_errors = {},
-            msg0 = false,
-            msg1 = false;
-
-        function check()
+        with_mqs(2, 'should be able to defer to final handler if a stream errors', function (mqs, cb)
         {
-            if (peer_errors.server1 ||
-                peer_errors.fsq ||
-                peer_errors.client1 ||
-                peer_errors.duplex1)
+            var peer_errors = {},
+                msg0 = false,
+                msg1 = false;
+
+            function check()
             {
-                return cb(new Error('unexpected error'));
+                if (peer_errors.server1 ||
+                    peer_errors.fsq ||
+                    peer_errors.client1 ||
+                    peer_errors.duplex1)
+                {
+                    return cb(new Error('unexpected error'));
+                }
+
+                if (msg0 &&
+                    msg1 &&
+                    peer_errors.server0 &&
+                    peer_errors.client0 &&
+                    peer_errors.duplex0)
+                {
+                    cb();
+                }
             }
 
-            if (msg0 &&
-                msg1 &&
-                peer_errors.server0 &&
-                peer_errors.client0 &&
-                peer_errors.duplex0)
+            function expect_peer_error(name)
             {
-                cb();
+                return function (err)
+                {
+                    expect(err.message).to.equal('peer error');
+                    peer_errors[name] = true;
+                    check();
+                };
             }
-        }
 
-        function expect_peer_error(name)
-        {
-            return function (err)
-            {
-                expect(err.message).to.equal('peer error');
-                peer_errors[name] = true;
-                check();
-            };
-        }
+            mqs[0].server.on('warning', expect_peer_error('server0'));
+            mqs[1].server.on('warning', expect_peer_error('server1'));
+            mqs[0].server.fsq.on('warning', expect_peer_error('fsq'));
+            mqs[0].client.on('error', expect_peer_error('client0'));
+            mqs[1].client.on('error', expect_peer_error('client1'));
 
-        mqs[0].server.on('warning', expect_peer_error('server0'));
-        mqs[1].server.on('warning', expect_peer_error('server1'));
-        mqs[0].server.fsq.on('warning', expect_peer_error('fsq'));
-        mqs[0].client.on('error', expect_peer_error('client0'));
-        mqs[1].client.on('error', expect_peer_error('client1'));
-
-        mqs[0].client.subscribe('foo', function (s)
-        {
-            s.on('error', expect_peer_error('duplex0'));
-            s.peer_error_then_end();
-            read_all(s, function (v)
+            mqs[0].client.subscribe('foo', function (s)
             {
-                expect(v.length).to.be.below(100000);
-                msg0 = true;
-                check();
-            });
-        }, function (err)
-        {
-            if (err) { return cb(err); }
-            mqs[1].client.subscribe('foo', function (s)
-            {
-                s.on('error', expect_peer_error('duplex1'));
+                s.on('error', expect_peer_error('duplex0'));
+                s.peer_error_then_end();
                 read_all(s, function (v)
                 {
-                    expect(v.length).to.equal(100000);
-                    msg1 = true;
+                    expect(v.length).to.be.below(100000);
+                    msg0 = true;
                     check();
                 });
             }, function (err)
             {
                 if (err) { return cb(err); }
-                mqs[0].client.publish('foo', function (err)
+                mqs[1].client.subscribe('foo', function (s)
+                {
+                    s.on('error', expect_peer_error('duplex1'));
+                    read_all(s, function (v)
+                    {
+                        expect(v.length).to.equal(100000);
+                        msg1 = true;
+                        check();
+                    });
+                }, function (err)
                 {
                     if (err) { return cb(err); }
-                }).end(new Buffer(100000));
+                    mqs[0].client.publish('foo', function (err)
+                    {
+                        if (err) { return cb(err); }
+                    }).end(new Buffer(100000));
+                });
             });
-        });
-    }, it,
-    {
-        defer_to_final_handler: true
-    });
-
-    with_mqs(2, 'should be able to defer to final handler if a stream errors on server', function (mqs, cb)
-    {
-        var peer_errors = {},
-            server0_dummy = false,
-            server0_cb = false,
-            msg1 = false;
-
-        function check()
+        }, it,
         {
-            if (peer_errors.server1 ||
-                peer_errors.fsq ||
-                peer_errors.client1 ||
-                peer_errors.duplex1)
-            {
-                return cb(new Error('unexpected error'));
-            }
-
-            if (msg1 &&
-                server0_dummy &&
-                server0_cb)
-            {
-                cb();
-            }
-        }
-
-        function expect_peer_error(name)
-        {
-            return function (err)
-            {
-                expect(err.message).to.equal('peer error');
-                peer_errors[name] = true;
-                check();
-            };
-        }
-
-        mqs[0].server.on('warning', function (err)
-        {
-            expect(err.message).to.equal('dummy');
-            server0_dummy = true;
-            check();
+            defer_to_final_handler: true
         });
 
-        mqs[1].server.on('warning', expect_peer_error('server1'));
-        mqs[0].server.fsq.on('warning', expect_peer_error('fsq'));
-        mqs[0].client.on('error', expect_peer_error('client0'));
-        mqs[1].client.on('error', expect_peer_error('client1'));
+        with_mqs(2, 'should be able to defer to final handler if a stream errors on server', function (mqs, cb)
+        {
+            var peer_errors = {},
+                server0_dummy = false,
+                server0_cb = false,
+                msg1 = false;
 
-        mqs[0].server.on('message', function (data, info, multiplex, cb)
-        {
-            cb(new Error('dummy'), function ()
+            function check()
             {
-                server0_cb = true;
-                check();
-            });
-        });
-
-        mqs[0].client.subscribe('foo', function ()
-        {
-            cb(new Error('should not be called'));
-        }, function (err)
-        {
-            if (err) { return cb(err); }
-            mqs[1].client.subscribe('foo', function (s)
-            {
-                s.on('error', expect_peer_error('duplex1'));
-                read_all(s, function (v)
+                if (peer_errors.server1 ||
+                    peer_errors.fsq ||
+                    peer_errors.client1 ||
+                    peer_errors.duplex1)
                 {
-                    expect(v.length).to.equal(100000);
-                    msg1 = true;
+                    return cb(new Error('unexpected error'));
+                }
+
+                if (msg1 &&
+                    server0_dummy &&
+                    server0_cb)
+                {
+                    cb();
+                }
+            }
+
+            function expect_peer_error(name)
+            {
+                return function (err)
+                {
+                    expect(err.message).to.equal('peer error');
+                    peer_errors[name] = true;
+                    check();
+                };
+            }
+
+            mqs[0].server.on('warning', function (err)
+            {
+                expect(err.message).to.equal('dummy');
+                server0_dummy = true;
+                check();
+            });
+
+            mqs[1].server.on('warning', expect_peer_error('server1'));
+            mqs[0].server.fsq.on('warning', expect_peer_error('fsq'));
+            mqs[0].client.on('error', expect_peer_error('client0'));
+            mqs[1].client.on('error', expect_peer_error('client1'));
+
+            mqs[0].server.on('message', function (data, info, multiplex, cb)
+            {
+                cb(new Error('dummy'), function ()
+                {
+                    server0_cb = true;
                     check();
                 });
+            });
+
+            mqs[0].client.subscribe('foo', function ()
+            {
+                cb(new Error('should not be called'));
             }, function (err)
             {
                 if (err) { return cb(err); }
-                mqs[0].client.publish('foo', function (err)
+                mqs[1].client.subscribe('foo', function (s)
+                {
+                    s.on('error', expect_peer_error('duplex1'));
+                    read_all(s, function (v)
+                    {
+                        expect(v.length).to.equal(100000);
+                        msg1 = true;
+                        check();
+                    });
+                }, function (err)
                 {
                     if (err) { return cb(err); }
-                }).end(new Buffer(100000));
+                    mqs[0].client.publish('foo', function (err)
+                    {
+                        if (err) { return cb(err); }
+                    }).end(new Buffer(100000));
+                });
             });
+        }, it,
+        {
+            defer_to_final_handler: true
         });
-    }, it,
-    {
-        defer_to_final_handler: true
-    });
+    }
 });
 };
