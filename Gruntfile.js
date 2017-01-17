@@ -33,7 +33,7 @@ module.exports = function (grunt)
             cover: {
                 command: './node_modules/.bin/istanbul cover -x Gruntfile.js ./node_modules/.bin/grunt -- test',
                 execOptions: {
-                    maxBuffer: 10000 * 1024
+                    maxBuffer: 100000 * 1024
                 }
             },
 
