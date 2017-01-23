@@ -90,7 +90,9 @@ describe(type, function ()
                     {
                         connect_and_accept(function (cs, ss)
                         {
-                            var cmq = new MQlobberClient(cs),
+                            var cmq = new MQlobberClient(cs,
+                                      options ? options.mqclient_options :
+                                                options),
                                 smq = new MQlobberServer(fsq, ss,
                                       options === null ? options :
                                       util._extend(
@@ -769,22 +771,34 @@ describe(type, function ()
     {
         end(function ()
         {
-            mqs[0].client.subscribe('foo', function ()
+            expect(function ()
             {
-                cb(new Error('should not be called'));
-            }, function (err)
-            {
-                expect(err.message).to.equal('finished');
-                mqs[0].client.unsubscribe(function (err)
+                mqs[0].client.subscribe('foo', function ()
                 {
-                    expect(err.message).to.equal('finished');
-                    mqs[0].client.publish('foo', function (err)
-                    {
-                        expect(err.message).to.equal('finished');
-                        cb(); 
-                    }).end('bar');
+                    cb(new Error('should not be called'));
+                }, function ()
+                {
+                    cb(new Error('should not be called'));
                 });
-            });
+            }).to.throw('finished');
+            
+            expect(function ()
+            {
+                mqs[0].client.unsubscribe(function ()
+                {
+                    cb(new Error('should not be called'));
+                });
+            }).to.throw('finished');
+
+            expect(function ()
+            {
+                mqs[0].client.publish('foo', function ()
+                {
+                    cb(new Error('should not be called'));
+                });
+            }).to.throw('finished');
+
+            cb();
         });
     });
 
@@ -993,8 +1007,39 @@ describe(type, function ()
         });
     });
 
-    with_mqs(1, 'should emit warning if max number of multiplexed streams', function (mqs, cb)
+    with_mqs(1, 'server should emit warning if max number of multiplexed streams', function (mqs, cb)
     {
+        var full = false,
+            streams = [],
+            read = 0,
+            removed = 0;
+
+        function check3()
+        {
+            if ((read === 10) && (removed === 11)) // 1 for subscribe
+            {
+                cb();
+            }
+        }
+
+        function check2(v)
+        {
+            expect(v.toString()).to.equal('bar');
+            read += 1;
+            check3();
+        }
+
+        function check()
+        {
+            if (full && (streams.length === 10))
+            {
+                for (var s of streams)
+                {
+                    read_all(s, check2);
+                }
+            }
+        }
+
         mqs[0].client.on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -1006,6 +1051,7 @@ describe(type, function ()
 
         mqs[0].server.once('warning', function (err)
         {
+            expect(full).to.equal(true);
             expect(err.message).to.equal('full');
 
             mqs[0].server.once('warning', function (err)
@@ -1019,13 +1065,27 @@ describe(type, function ()
                         'carrier stream finished before duplex finished'
                     ]);
                 });
-            });
 
-            cb();
+                check();
+            });
         });
 
-        mqs[0].client.subscribe('foo', function ()
+        mqs[0].server.on('full', function ()
         {
+            full = true;
+        });
+
+        mqs[0].server.on('removed', function (duplex)
+        {
+            removed += 1;
+            check3();
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.topic).to.equal('foo');
+            streams.push(s);
+            check();
         }, function (err)
         {
             if (err) { return cb(err); }
@@ -1036,7 +1096,86 @@ describe(type, function ()
         });
     }, it, { max_open: 10 });
 
-    with_mqs(1, 'should emit full event when client handshakes are backed up', function (mqs, cb, end)
+    with_mqs(1, 'client should emit warning if max number of multiplexed streams', function (mqs, cb)
+    {
+        var full = 0,
+            published = 0,
+            messages = 0,
+            removed = 0;
+
+        function check()
+        {
+            expect(full).to.equal(1);
+
+            if ((published === 10) &&
+                (messages === 10) &&
+                (removed === 21)) // 1 for subscribe request,
+                                  // 10 for publish requests,
+                                  // 10 for messages
+            {
+                cb();
+            }
+        }
+
+        function onpub(err)
+        {
+            if (err) { return cb(err); }
+            published += 1;
+            check();
+        }
+
+        mqs[0].client.on('full', function ()
+        {
+            full += 1;
+        });
+
+        mqs[0].client.on('removed', function ()
+        {
+            removed += 1;
+        });
+
+        mqs[0].client.subscribe('foo', function (s, info)
+        {
+            expect(info.topic).to.equal('foo');
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                messages += 1;
+                check();
+            });
+        }, function (err)
+        {
+            if (err) { return cb(err); }
+            setTimeout(function ()
+            {
+                var streams = [], s;
+
+                for (var i = 0; i < 10; i += 1)
+                {
+                    s = mqs[0].client.publish('foo', onpub);
+                    streams.push(s);
+                    s.write('bar');
+                }
+
+                expect(function ()
+                {
+                    mqs[0].client.publish('foo', function ()
+                    {
+                        cb(new Error('should not be called'));
+                    });
+                }).to.throw('full');
+                
+                expect(full).to.equal(1);
+
+                for (s of streams)
+                {
+                    s.end();
+                }
+            }, 500);
+        });
+    }, it, { mqclient_options: { max_open: 10 } });
+
+    with_mqs(1, 'should emit backoff event when client handshakes are backed up', function (mqs, cb, end)
     {
         var orig_write = mqs[0].client_stream._write,
             the_chunk,
@@ -1045,10 +1184,11 @@ describe(type, function ()
             count_complete = 0,
             count_incomplete = 0,
             count_pub_error = 0,
+            count_pub_stream_error = 0,
             count_sub_error = 0,
             count_unsub_error = 0,
             ended = false,
-            full_called = false;
+            backoff_called = false;
 /*
         var orig_error = console.error;
         console.error = function ()
@@ -1063,7 +1203,15 @@ describe(type, function ()
 */
         mqs[0].client.on('warning', function (err)
         {
-            expect(err.message).to.equal('carrier stream ended before end message received');
+            expect(err.message).to.be.oneOf([
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
+            ]);
+        });
+
+        mqs[0].client.on('error', function (err)
+        {
+            expect(err.message).to.equal('write after end');
         });
 
         mqs[0].server.on('warning', function (err)
@@ -1084,12 +1232,14 @@ describe(type, function ()
         {
             if (ended &&
                 count_pub_error === 2993 &&
+                count_pub_stream_error === 2993 &&
                 count_sub_error === 1 &&
                 count_unsub_error === 1)
             {
                 cb();
             }
             else if (count_pub_error > 2993 ||
+                     count_pub_stream_error > 2993 ||
                      count_sub_error > 1 ||
                      count_unsub_error > 1)
             {
@@ -1110,7 +1260,16 @@ describe(type, function ()
         {
             expect(count_complete).to.equal(2992);
             expect(count_incomplete).to.equal(0); // only counted below
-            full_called = true;
+            backoff_called = true;
+        });
+
+        mqs[0].client.on('drain', function ()
+        {
+            end(function ()
+            {
+                ended = true;
+                check_end();
+            });
         });
 
         function sent(complete)
@@ -1127,17 +1286,17 @@ describe(type, function ()
             {
                 expect(count_complete).to.equal(2992);
                 expect(count_incomplete).to.equal(1);
-                expect(full_called).to.equal(true);
+                expect(backoff_called).to.equal(true);
                 mqs[0].client.subscribe('foo', function () {}, function (err)
                 {
-                    expect(err.message).to.equal('carrier stream ended before end message received');
+                    expect(err.message).to.equal('write after end');
                     count_sub_error += 1;
                     check_end();
                 });
                 mqs[0].client.subs.set('foo', new Set([function () {}]));
                 mqs[0].client.unsubscribe(function (err)
                 {
-                    expect(err.message).to.equal('carrier stream ended before end message received');
+                    expect(err.message).to.equal('write after end');
                     count_unsub_error += 1;
                     check_end();
                 });
@@ -1146,11 +1305,6 @@ describe(type, function ()
                     if (err) { return cb(err); }
                     mqs[0].client_stream._write = orig_write;
                     mqs[0].client_stream._write(the_chunk, the_encoding, the_callback);
-                    end(function ()
-                    {
-                        ended = true;
-                        check_end();
-                    });
                 });
             }
             else if ((count_complete + count_incomplete) > 2993)
@@ -1161,15 +1315,32 @@ describe(type, function ()
 
         function onpub(err)
         {
-            expect(err.message).to.equal('carrier stream finished before duplex finished');
+            expect(err.message).to.equal('write after end');
             count_pub_error += 1;
             check_end();
+        }
+
+        function onerror(err)
+        {
+            if (err.message === 'write after end')
+            {
+                count_pub_stream_error += 1;
+                check_end();
+            }
+            else
+            {
+                expect(err.message).to.be.oneOf([
+                    'carrier stream finished before duplex finished',
+                    'carrier stream ended before end message received'
+                ]);
+            }
         }
 
         for (var i=0; i < 2993; i += 1)
         {
             var duplex = mqs[0].client.publish('foo', onpub);
             duplex.on('handshake_sent', sent);
+            duplex.on('error', onerror);
             duplex.end('bar');
         }
     });
@@ -1443,7 +1614,7 @@ describe(type, function ()
         });
     }, it, { sinon: true });
 
-    with_mqs(1, 'should emit full event when server handshakes are backed up', function (mqs, cb)
+    with_mqs(1, 'should emit backoff event when server handshakes are backed up', function (mqs, cb)
     {
         var orig_write = mqs[0].server_stream._write,
             the_chunk,
@@ -1451,7 +1622,7 @@ describe(type, function ()
             the_callback,
             count_complete = 0,
             count_incomplete = 0,
-            full_called = false;
+            backoff_called = false;
 
         mqs[0].server.on('warning', function (err)
         {
@@ -1471,8 +1642,10 @@ describe(type, function ()
         {
             expect(count_complete).to.equal(3980);
             expect(count_incomplete).to.equal(0); // only counted below
-            full_called = true;
+            backoff_called = true;
         });
+
+        mqs[0].server.on('drain', cb);
 
         function sent(complete)
         {
@@ -1488,10 +1661,9 @@ describe(type, function ()
             {
                 expect(count_complete).to.equal(3980);
                 expect(count_incomplete).to.equal(1);
-                expect(full_called).to.equal(true);
+                expect(backoff_called).to.equal(true);
                 mqs[0].server_stream._write = orig_write;
                 mqs[0].server_stream._write(the_chunk, the_encoding, the_callback);
-                cb();
             }
         }
 

@@ -182,6 +182,9 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberclientprototypepublishtopic-options-cb"></a>[MQlobberClient.prototype.publish](#mqlobberclientprototypepublishtopic-options-cb)
 - <a name="toc_mqlobberclienteventshandshakehandshake_data"></a><a name="toc_mqlobberclientevents"></a>[MQlobberClient.events.handshake](#mqlobberclienteventshandshakehandshake_data)
 - <a name="toc_mqlobberclienteventsbackoff"></a>[MQlobberClient.events.backoff](#mqlobberclienteventsbackoff)
+- <a name="toc_mqlobberclienteventsdrain"></a>[MQlobberClient.events.drain](#mqlobberclienteventsdrain)
+- <a name="toc_mqlobberclienteventsfull"></a>[MQlobberClient.events.full](#mqlobberclienteventsfull)
+- <a name="toc_mqlobberclienteventsremovedduplex"></a>[MQlobberClient.events.removed](#mqlobberclienteventsremovedduplex)
 - <a name="toc_mqlobberclienteventserrorerr-obj"></a>[MQlobberClient.events.error](#mqlobberclienteventserrorerr-obj)
 - <a name="toc_mqlobberclienteventswarningerr-obj"></a>[MQlobberClient.events.warning](#mqlobberclienteventswarningerr-obj)
 - <a name="toc_mqlobberserverfsq-stream-options"></a>[MQlobberServer](#mqlobberserverfsq-stream-options)
@@ -194,6 +197,9 @@ Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 - <a name="toc_mqlobberservereventsmessagestream-info-multiplex-done"></a>[MQlobberServer.events.message](#mqlobberservereventsmessagestream-info-multiplex-done)
 - <a name="toc_mqlobberservereventshandshakehandshake_data-delay_handshake"></a>[MQlobberServer.events.handshake](#mqlobberservereventshandshakehandshake_data-delay_handshake)
 - <a name="toc_mqlobberservereventsbackoff"></a>[MQlobberServer.events.backoff](#mqlobberservereventsbackoff)
+- <a name="toc_mqlobberservereventsdrain"></a>[MQlobberServer.events.drain](#mqlobberservereventsdrain)
+- <a name="toc_mqlobberservereventsfull"></a>[MQlobberServer.events.full](#mqlobberservereventsfull)
+- <a name="toc_mqlobberservereventsremovedduplex"></a>[MQlobberServer.events.removed](#mqlobberservereventsremovedduplex)
 - <a name="toc_mqlobberservereventsackinfo"></a>[MQlobberServer.events.ack](#mqlobberservereventsackinfo)
 - <a name="toc_mqlobberservereventserrorerr-obj"></a>[MQlobberServer.events.error](#mqlobberservereventserrorerr-obj)
 - <a name="toc_mqlobberservereventswarningerr-obj"></a>[MQlobberServer.events.warning](#mqlobberservereventswarningerr-obj)
@@ -219,6 +225,11 @@ server). It also supports the following additional property:
     the server. The server-side [`MQlobberServer`](#mqlobberserverfsq-stream-options) object will
     emit this as a [`handshake`](#mqlobberservereventshandshakehandshake_data-delay_handshake) event to its
     application.
+
+
+**Throws:**
+
+- `{Error}` If an error occurs before initiating the multiplex with the server.
 
 <sub>Go: [TOC](#tableofcontents)</sub>
 
@@ -265,6 +276,11 @@ the following arguments:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
+
+**Throws:**
+
+- `{Error}` If an error occurs before sending the subscribe request to the server.
+
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
 
 ## MQlobberClient.prototype.unsubscribe([topic], [handler], [cb])
@@ -286,6 +302,11 @@ for the topic `topic` are unsubscribed.
 argument:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
+
+
+**Throws:**
+
+- `{Error}` If an error occurs before sending the unsubscribe request to the server.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
 
@@ -318,6 +339,10 @@ argument:
 
 `{Writable}` Stream to which to [write](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_writable_write_chunk_encoding_callback) the message's data. Make sure you [`end`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_writable_end_chunk_encoding_callback) it when you're done.
 
+**Throws:**
+
+- `{Error}` If an error occurs before sending the publish request to the server.
+
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.prototype](#toc_mqlobberclientprototype)</sub>
 
 <a name="mqlobberclientevents"></a>
@@ -343,8 +368,35 @@ Emitted by a `MQlobberClient` object when it delays a request to the server
 because the connection is at full capacity. If you want to avoid buffering
 further requests, don't call [`subscribe`](#mqlobberclientprototypesubscribetopic-handler-cb),
 [`unsubscribe`](#mqlobberclientprototypeunsubscribetopic-handler-cb) or
-[`publish`](http://localhost:6419/#mqlobberclientprototypepublishtopic-options-cb) until the connection `Duplex` emits a
-[`drain`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_event_drain) event.
+[`publish`](http://localhost:6419/#mqlobberclientprototypepublishtopic-options-cb) until a [`drain`](#mqlobberclienteventsdrain) event is emitted.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.drain()
+
+> `drain` event
+
+Emitted by a `MQlobberClient` object when the multiplexing layer emits a [`drain`](https://github.com/davedoesdev/bpmux#bpmuxeventsdrain) event.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.full()
+
+> `full` event
+
+Emitted by a `MQlobberClient` object when the multiplexing layer emits a [`full`](https://github.com/davedoesdev/bpmux#bpmuxeventsfull) event.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
+
+## MQlobberClient.events.removed(duplex)
+
+> `removed` event
+
+Emitted by a `MQlobberClient` object when the multiplexing layer emits a [`removed`](https://github.com/davedoesdev/bpmux#bpmuxeventsremovedduplex) event.
+
+**Parameters:**
+
+- `{Duplex} duplex` The multiplexed stream which has closed.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberClient.events](#toc_mqlobberclientevents)</sub>
 
@@ -404,6 +456,9 @@ client). It also supports the following additional property:
 
   - `{Boolean} send_size` Whether to include message size in metadata sent to
     then client. Defaults to `false`.
+
+  - `{Boolean} defer_to_final_handler` If `true` then a message stream is only
+    considered finished when all `MQlobberServer` objects finish processing it.
 
 <sub>Go: [TOC](#tableofcontents)</sub>
 
@@ -634,16 +689,41 @@ Emitted by a `MQlobberServer` object when it delays a message to the client
 because the connection is at full capacity.
 
 If you want to avoid buffering further messages, use a `filter` function (see
-`QlobberFSQ`'s [constructor](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)) to prevent messages being sent until the connection `Duplex` emits a
-[`drain`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_event_drain) event. In the `filter` function, a handler owned by a `MQlobberServer`
-object will have a property named `mqlobber_server` set to the `MQlobberServer`
-object.
+`QlobberFSQ`'s [constructor](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions)) to prevent messages being sent until a [`drain`](#mqlobberservereventsdrain) event is emitted. In the `filter` function, a handler owned by a `MQlobberServer` object will have a property named `mqlobber_server` set to the `MQlobberServer` object.
 
 You can also use event listeners on [`subscribe_requested`](#mqlobberservereventssubscribe_requestedtopic-cb), [`unsubscribe_requested`](#mqlobberservereventsunsubscribe_requestedtopic-cb), [`unsubscribe_all_requested`](#mqlobberservereventsunsubscribe_all_requestedcb) and [`publish_requested`](#mqlobberservereventspublish_requestedtopic-stream-options-cb) to prevent responses being
-sent to the client until the connection emits a `drain` event.
+sent to the client a `drain` event is emitted.
 
 Depending on your application, you might also terminate the connection if it
 can't keep up.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.drain()
+
+> `drain` event
+
+Emitted by a `MQlobberServer` object when the multiplexing layer emits a [`drain`](https://github.com/davedoesdev/bpmux#bpmuxeventsdrain) event.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.full()
+
+> `full` event
+
+Emitted by a `MQlobberServer` object when the multiplexing layer emits a [`full`](https://github.com/davedoesdev/bpmux#bpmuxeventsfull) event.
+
+<sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
+
+## MQlobberServer.events.removed(duplex)
+
+> `removed` event
+
+Emitted by a `MQlobberServer` object when the multiplexing layer emits a [`removed`](https://github.com/davedoesdev/bpmux#bpmuxeventsremovedduplex) event.
+
+**Parameters:**
+
+- `{Duplex} duplex` The multiplexed stream which has closed.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
