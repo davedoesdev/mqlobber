@@ -3244,8 +3244,6 @@ describe(type, function ()
                 this.read();
             });
 
-            cs.end();
-
             var mqclient = new MQlobberClient(cs);
 
             mqclient.on('error', function (err)
@@ -3253,11 +3251,14 @@ describe(type, function ()
                 expect(err.message).to.be.oneOf(
                 [
                     'carrier stream ended before end message received',
+                    'carrier stream finished before duplex finished',
                     'write after end'
                 ]);
                 errored = true;
                 check();
             });
+
+            cs.end();
         });
     });
 
