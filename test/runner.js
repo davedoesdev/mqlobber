@@ -2652,8 +2652,11 @@ describe(type, function ()
                 cb();
             });
 
-            // give time for client to get stream end
-            setImmediate(done);
+            read_all(s, function (v)
+            {
+                expect(v.toString()).to.equal('bar');
+                done();
+            });
         }, function (err)
         {
             if (err) { return cb(err); }
@@ -2662,7 +2665,7 @@ describe(type, function ()
                 if (err) { return cb(err);  }
             }).end('bar');
         });
-    }, it);
+    });
 
     with_mqs(1, 'should tell server when processing work errors',
     function (mqs, cb)
