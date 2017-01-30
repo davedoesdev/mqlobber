@@ -459,6 +459,7 @@ client). It also supports the following additional property:
 
   - `{Boolean} defer_to_final_handler` If `true` then a message stream is only
     considered finished when all `MQlobberServer` objects finish processing it.
+    Defaults to `false`.
 
 <sub>Go: [TOC](#tableofcontents)</sub>
 
@@ -490,6 +491,8 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
+  - `{Integer} n` The number of subscriptions made (0 if `topic` was already subscribed to, 1 if not).
+
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.prototype](#toc_mqlobberserverprototype)</sub>
 
 ## MQlobberServer.prototype.unsubscribe([topic], [cb])
@@ -500,9 +503,11 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
 - `{String} [topic]` Which messages the client should no longer receive. If topic is `undefined` then the client will receive no more messages at all.
 
-- `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
+- `{Function} [cb]` Optional function to call once the subscription has been removed. This will be passed the following argument:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
+
+  - `{Integer} n` The number of subscriptions removed.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.prototype](#toc_mqlobberserverprototype)</sub>
 

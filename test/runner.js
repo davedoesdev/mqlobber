@@ -1987,9 +1987,10 @@ describe(type, function ()
             cb(new Error('test'));
         };
 
-        mqs[0].server.subscribe('foo', function (err)
+        mqs[0].server.subscribe('foo', function (err, n)
         {
             expect(err.message).to.equal('test');
+            expect(n).to.equal(0);
             cb();
         });
     });
@@ -2038,15 +2039,24 @@ describe(type, function ()
             cb(new Error('test'));
         };
 
-        mqs[0].server.subscribe('foo', function (err)
+        mqs[0].server.subscribe('foo', function (err, n)
         {
             if (err) { return cb(err); }
+            expect(n).to.equal(1);
 
-            mqs[0].server.unsubscribe(function (err)
+            mqs[0].server.subscribe('foo', function (err, n)
             {
-                expect(err.message).to.equal('test');
-                mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
-                cb();
+                if (err) { return cb(err); }
+                expect(n).to.equal(0);
+
+                mqs[0].server.unsubscribe(function (err, n)
+                {
+                    expect(err.message).to.equal('test');
+                    expect(n).to.equal(0);
+
+                    mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
+                    cb();
+                });
             });
         });
     });
@@ -2061,13 +2071,16 @@ describe(type, function ()
             cb(new Error('test'));
         };
 
-        mqs[0].server.subscribe('foo', function (err)
+        mqs[0].server.subscribe('foo', function (err, n)
         {
             if (err) { return cb(err); }
 
-            mqs[0].server.unsubscribe('foo', function (err)
+            expect(n).to.equal(1);
+
+            mqs[0].server.unsubscribe('foo', function (err, n)
             {
                 expect(err.message).to.equal('test');
+                expect(n).to.equal(0);
                 mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
                 cb();
             });
@@ -2086,9 +2099,11 @@ describe(type, function ()
             cb(new Error('test'));
         };
 
-        mqs[0].server.subscribe('foo', function (err)
+        mqs[0].server.subscribe('foo', function (err, n)
         {
             if (err) { return cb(err); }
+
+            expect(n).to.equal(1);
 
             setTimeout(function ()
             {
@@ -2106,7 +2121,43 @@ describe(type, function ()
     function (mqs, cb)
     {
         expect(mqs[0].server.subs.has('foo')).to.equal(false);
-        mqs[0].server.unsubscribe('foo', cb);
+        mqs[0].server.unsubscribe('foo', function (err, n)
+        {
+            expect(n).to.equal(0);
+            cb(err);
+        });
+    });
+
+    with_mqs(1, 'server should unsubscribe twice without error',
+    function (mqs, cb)
+    {
+        mqs[0].server.subscribe('foo', function (err, n)
+        {
+            if (err) { return cb(err); }
+            expect(n).to.equal(1);
+            mqs[0].server.subscribe('bar', function (err, n)
+            {
+                if (err) { return cb(err); }
+                expect(n).to.equal(1);
+                mqs[0].server.subscribe('wup', function (err, n)
+                {
+                    if (err) { return cb(err); }
+                    expect(n).to.equal(1);
+        
+                    mqs[0].server.unsubscribe('foo', function (err, n)
+                    {
+                        if (err) { return cb(err); }
+                        expect(n).to.equal(1);
+
+                        mqs[0].server.unsubscribe(function (err, n)
+                        {
+                            expect(n).to.equal(2);
+                            cb(err);
+                        });
+                    });
+                });
+            });
+        });
     });
 
     function rabbitmq_topic_tests3(d, topics_per_mq, expected, rounds, f)
@@ -3197,9 +3248,10 @@ describe(type, function ()
             cb(new Error('should not be called'));
         });
 
-        mqs[0].server.subscribe('foo', function (err)
+        mqs[0].server.subscribe('foo', function (err, n)
         {
             if (err) { return cb(err); }
+            expect(n).to.equal(1);
             mqs[0].server.fsq.publish('foo',
             {
                 single: true,
