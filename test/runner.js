@@ -140,6 +140,21 @@ describe(type, function ()
 
                 async.each(mqs, function (mq, cb)
                 {
+                    mq.server.removeAllListeners('unsubscribe_all_requested');
+
+                    if (mq.server._done)
+                    {
+                        mq.server.centro_test_uar = true;
+                    }
+                    else
+                    {
+                        mq.server.on('unsubscribe_all_requested', function ()
+                        {
+                            this.unsubscribe();
+                            this.centro_test_uar = true;
+                        });
+                    }
+
                     if (mq.client.mux.carrier._readableState.ended ||
                         mq.client.mux.carrier.destroyed)
                     {
@@ -153,6 +168,11 @@ describe(type, function ()
                     mq.client_stream.end();
                 }, function (err)
                 {
+                    for (var mq of mqs)
+                    {
+                        expect(mq.server.centro_test_uar).to.equal(true);
+                    }
+
                     fsq.stop_watching(function ()
                     {
                         cb(err);

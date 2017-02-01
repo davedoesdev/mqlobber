@@ -22,12 +22,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>209/209</span>
+        <span class='fraction'>206/206</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Branches</span>
-        <span class='fraction'>110/110</span>
+        <span class='fraction'>106/106</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -37,7 +37,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>208/208</span>
+        <span class='fraction'>206/206</span>
       </div>
     </div>
   </div>
@@ -625,7 +625,8 @@
 580
 581
 582
-583</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+583
+584</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -693,7 +694,7 @@
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">23351×</span>
+<span class="cline-any cline-yes">522086×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">89×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -731,7 +732,11 @@
 <span class="cline-any cline-yes">1904×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1904×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1904×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1904×</span>
@@ -945,9 +950,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">61534×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5108×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">61534×</span>
 <span class="cline-any cline-yes">61534×</span>
 <span class="cline-any cline-yes">61534×</span>
@@ -1093,9 +1095,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3616×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1148,9 +1150,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">538×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1906×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1906×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1275,7 +1277,7 @@ function MQlobberServer(fsq, stream, options)
     function warning(err)
     {
         /*jshint validthis: true */
-        if (!ths.emit('warning', err, this))
+        if (err &amp;&amp; !ths.emit('warning', err, this))
         {
             console.error(err);
         }
@@ -1312,8 +1314,12 @@ function MQlobberServer(fsq, stream, options)
 &nbsp;
     this.mux.on('finish', function ()
     {
-        ths.unsubscribe();
         ths._done = true;
+&nbsp;
+        if (!ths.emit('unsubscribe_all_requested', warning))
+        {
+            ths.unsubscribe();
+        }
     });
 &nbsp;
     this.relay_error = function (err)
@@ -1349,7 +1355,7 @@ function MQlobberServer(fsq, stream, options)
 &nbsp;
         function cb(err, cb2)
         {
-            if (err) { warning(err); }
+            warning(err);
 &nbsp;
             if (!called)
             {
@@ -1525,10 +1531,7 @@ function MQlobberServer(fsq, stream, options)
 &nbsp;
             function done(err, data)
             {
-                if (err)
-                {
-                    warning.call(duplex, err);
-                }
+                warning.call(duplex, err);
 &nbsp;
                 var hdata = new Buffer(1);
                 hdata.writeUInt8(err ? 1 : 0);
@@ -1675,7 +1678,7 @@ MQlobberServer.prototype.subscribe = function (topic, options, cb)
         {
             cb(err, n);
         }
-        else if (err)
+        else
         {
             ths._warning(err);
         }
@@ -1730,7 +1733,7 @@ MQlobberServer.prototype.unsubscribe = function (topic, cb)
         {
             cb(err, n);
         }
-        else if (err)
+        else
         {
             ths._warning(err);
         }
@@ -1795,7 +1798,7 @@ exports.MQlobberServer = MQlobberServer;
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Mon Jan 30 2017 22:09:15 GMT+0000 (GMT)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Feb 01 2017 21:05:28 GMT+0000 (GMT)
 </div>
 </div>
 <script src="../../prettify.js"></script>
