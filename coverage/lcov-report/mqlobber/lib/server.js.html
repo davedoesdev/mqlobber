@@ -22,7 +22,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>206/206</span>
+        <span class='fraction'>216/216</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -32,12 +32,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>32/32</span>
+        <span class='fraction'>37/37</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>206/206</span>
+        <span class='fraction'>216/216</span>
       </div>
     </div>
   </div>
@@ -626,7 +626,32 @@
 581
 582
 583
-584</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+584
+585
+586
+587
+588
+589
+590
+591
+592
+593
+594
+595
+596
+597
+598
+599
+600
+601
+602
+603
+604
+605
+606
+607
+608
+609</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -892,13 +917,6 @@
 <span class="cline-any cline-yes">440426×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">440405×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">440405×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1209,6 +1227,38 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">440405×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">440405×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3586×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">258×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">264×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">49410×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">"use strict";
 &nbsp;
 var EventEmitter = require('events').EventEmitter,
@@ -1318,7 +1368,7 @@ function MQlobberServer(fsq, stream, options)
 &nbsp;
         if (!ths.emit('unsubscribe_all_requested', warning))
         {
-            ths.unsubscribe();
+            ths.default_unsubscribe_all_requested_handler();
         }
     });
 &nbsp;
@@ -1474,14 +1524,7 @@ function MQlobberServer(fsq, stream, options)
 &nbsp;
         if (!ths.emit('message', data, info, multiplex, cb))
         {
-            try
-            {
-                data.pipe(multiplex());
-            }
-            catch (ex)
-            {
-                cb(ex);
-            }
+            ths.default_message_handler(data, info, multiplex, cb);
         }
     };
 &nbsp;
@@ -1566,7 +1609,7 @@ function MQlobberServer(fsq, stream, options)
                     if (!ths.emit('pre_subscribe_requested', topic, done) &amp;&amp;
                         !ths.emit('subscribe_requested', topic, done))
                     {
-                        ths.subscribe(topic, done);
+                        ths.default_subscribe_requested_handler(topic, done);
                     }
                     break;
 &nbsp;
@@ -1575,14 +1618,14 @@ function MQlobberServer(fsq, stream, options)
                     if (!ths.emit('pre_unsubscribe_requested', topic, done) &amp;&amp;
                         !ths.emit('unsubscribe_requested', topic, done))
                     {
-                        ths.unsubscribe(topic, done);
+                        ths.default_unsubscribe_requested_handler(topic, done);
                     }
                     break;
 &nbsp;
                 case TYPE_UNSUBSCRIBE_ALL:
                     if (!ths.emit('unsubscribe_all_requested', done))
                     {
-                        ths.unsubscribe(done);
+                        ths.default_unsubscribe_all_requested_handler(done);
                     }
                     break;
 &nbsp;
@@ -1617,7 +1660,7 @@ function MQlobberServer(fsq, stream, options)
                     if (!ths.emit('pre_publish_requested', topic, duplex, options, done) &amp;&amp;
                         !ths.emit('publish_requested', topic, duplex, options, done))
                     {
-                        duplex.pipe(ths.fsq.publish(topic, options, done));
+                        ths.default_publish_requested_handler(topic, duplex, options, done);
                     }
 &nbsp;
                     break;
@@ -1791,6 +1834,38 @@ MQlobberServer.prototype.unsubscribe = function (topic, cb)
     }
 };
 &nbsp;
+MQlobberServer.prototype.default_message_handler = function (data, info, multiplex, cb)
+{
+    try
+    {
+        data.pipe(multiplex());
+    }
+    catch (ex)
+    {
+        cb(ex);
+    }
+};
+&nbsp;
+MQlobberServer.prototype.default_subscribe_requested_handler = function (topic, done)
+{
+    this.subscribe(topic, done);
+};
+&nbsp;
+MQlobberServer.prototype.default_unsubscribe_requested_handler = function (topic, done)
+{
+    this.unsubscribe(topic, done);
+};
+&nbsp;
+MQlobberServer.prototype.default_unsubscribe_all_requested_handler = function (done)
+{
+    this.unsubscribe(done);
+};
+&nbsp;
+MQlobberServer.prototype.default_publish_requested_handler = function (topic, duplex, options, done)
+{
+    duplex.pipe(this.fsq.publish(topic, options, done));
+};
+&nbsp;
 exports.MQlobberServer = MQlobberServer;
 &nbsp;</pre></td></tr>
 </table></pre>
@@ -1798,7 +1873,7 @@ exports.MQlobberServer = MQlobberServer;
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Feb 01 2017 21:05:28 GMT+0000 (GMT)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Sun Feb 05 2017 07:12:45 GMT+0000 (GMT)
 </div>
 </div>
 <script src="../../prettify.js"></script>
