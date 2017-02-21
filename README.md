@@ -487,7 +487,7 @@ They can be changed when [constructing the `QlobberFSQ` instance]
     any existing, unexpired messages that match `topic`, as well as new ones.
     Defaults to `false` (only new messages).
 
-- `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following argument:
+- `{Function} [cb]` Optional function to call once the subscription has been made. This will be passed the following arguments:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`.
 
@@ -503,7 +503,7 @@ They can be changed when [constructing the `QlobberFSQ` instance]
 
 - `{String} [topic]` Which messages the client should no longer receive. If topic is `undefined` then the client will receive no more messages at all.
 
-- `{Function} [cb]` Optional function to call once the subscription has been removed. This will be passed the following argument:
+- `{Function} [cb]` Optional function to call once the subscription has been removed. This will be passed the following arguments:
 
   - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
 
@@ -531,11 +531,15 @@ application.
 - `{String} topic` The topic to which the client is asking to subscribe. 
 - `{Function} cb` Function to call after processing the subscription request. This function _must_ be called even if you don't call
 [`subscribe`](#mqlobberserverprototypesubscribetopic-options-cb) yourself.
-It takes a single argument:
+It takes the following arguments:
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`subscribe`](#mqlobberserverprototypesubscribetopic-options-cb) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
+
+  - `{Integer} n` The number of subscriptions made.
+
+  - `{Buffer} [data]` Optional data to return to the client.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -557,11 +561,15 @@ application.
 - `{String} topic` The topic from which the client is asking to unsubscribe. 
 - `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
 [`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) yourself. It takes
-a single argument:
+the following arguments:
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
+
+  - `{Integer} n` The number of subscriptions removed.
+
+  - `{Buffer} [data]` Optional data to return to the client.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -580,12 +588,16 @@ opportunity to filter unsubscription requests in the application.
 **Parameters:**
 
 - `{Function} cb` Function to call after processing the unsubscription request. This function _must_ be called even if you don't call
-[`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) yourself. It takes a single
-argument:
+[`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) yourself. It takes
+the following arguments:
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`unsubscribe`](#mqlobberserverprototypeunsubscribetopic-cb) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
+
+  - `{Integer} n` The number of subscriptions removed.
+
+  - `{Buffer} [data]` Optional data to return to the client.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
@@ -613,12 +625,13 @@ instance you passed to `MQlobberServer`'s [constructor](#mqlobberserverfsq-strea
   - `{Integer} ttl` Time-to-live (in seconds) for this message.
   
 - `{Function} cb` Function to call after processing the publication request. This function _must_ be called even if you don't call
-[`publish`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqprototypepublishtopic-payload-options-cb) yourself. It takes a single
-argument:
+[`publish`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqprototypepublishtopic-payload-options-cb) yourself. It takes the following arguments:
 
   - `{Object} err` If `null` then a success status is returned to the client
     (whether you called [`publish`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqprototypepublishtopic-payload-options-cb) or not).
     Otherwise, the client gets a failed status and a [`warning`](#mqlobberservereventswarningerr-obj) event is emitted with `err`.
+
+  - `{Buffer} [data]` Optional data to return to the client.
 
 <sub>Go: [TOC](#tableofcontents) | [MQlobberServer.events](#toc_mqlobberserverevents)</sub>
 
