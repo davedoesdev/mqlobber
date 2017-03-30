@@ -1029,7 +1029,7 @@ describe(type, function ()
 
     with_mqs(1, 'server should emit warning if max number of multiplexed streams', function (mqs, cb)
     {
-        var full = false,
+        var full = 0,
             streams = [],
             read = 0,
             removed = 0;
@@ -1051,7 +1051,7 @@ describe(type, function ()
 
         function check()
         {
-            if (full && (streams.length === 10))
+            if ((full === 2) && (streams.length === 10))
             {
                 for (var s of streams)
                 {
@@ -1069,30 +1069,10 @@ describe(type, function ()
             ]);
         });
 
-        mqs[0].server.once('warning', function (err)
-        {
-            expect(full).to.equal(true);
-            expect(err.message).to.equal('full');
-
-            mqs[0].server.once('warning', function (err)
-            {
-                expect(err.message).to.equal('full');
-
-                mqs[0].server.on('warning', function (err)
-                {
-                    expect(err.message).to.be.oneOf([
-                        'carrier stream ended before end message received',
-                        'carrier stream finished before duplex finished'
-                    ]);
-                });
-
-                check();
-            });
-        });
-
         mqs[0].server.on('full', function ()
         {
-            full = true;
+            full += 1;
+            check();
         });
 
         mqs[0].server.on('removed', function (duplex)
@@ -1116,7 +1096,7 @@ describe(type, function ()
         });
     }, it, { max_open: 10 });
 
-    with_mqs(1, 'client should emit warning if max number of multiplexed streams', function (mqs, cb)
+    with_mqs(1, 'client should emit full event if max number of multiplexed streams', function (mqs, cb)
     {
         var full = 0,
             published = 0,
@@ -1125,7 +1105,7 @@ describe(type, function ()
 
         function check()
         {
-            expect(full).to.equal(1);
+            expect(full).to.equal(2);
 
             if ((published === 10) &&
                 (messages === 10) &&
@@ -1184,13 +1164,16 @@ describe(type, function ()
                         cb(new Error('should not be called'));
                     });
                 }).to.throw('full');
-                
-                expect(full).to.equal(1);
 
-                for (s of streams)
+                setImmediate(function ()
                 {
-                    s.end();
-                }
+                    expect(full).to.equal(2);
+
+                    for (s of streams)
+                    {
+                        s.end();
+                    }
+                });
             }, 500);
         });
     }, it, { mqclient_options: { max_open: 10 } });
