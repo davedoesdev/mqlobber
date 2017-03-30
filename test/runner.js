@@ -1105,8 +1105,6 @@ describe(type, function ()
 
         function check()
         {
-            expect(full).to.equal(2);
-
             if ((published === 10) &&
                 (messages === 10) &&
                 (removed === 21)) // 1 for subscribe request,
