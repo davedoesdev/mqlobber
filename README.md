@@ -172,7 +172,7 @@ grunt coverage
 
 Coveralls page is [here](https://coveralls.io/r/davedoesdev/mqlobber).
 
-#API
+# API
 
 <a name="tableofcontents"></a>
 
