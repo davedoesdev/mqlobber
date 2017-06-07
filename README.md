@@ -449,7 +449,7 @@ How the connection is made is up to the caller - it just has to supply a
 
 - `{Object} [options]` Configuration options. This is passed down to [`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrier-options)
 (which multiplexes message streams over the connection to the
-client). It also supports the following additional property:
+client). It also supports the following additional properties:
 
   - `{Boolean} send_expires` Whether to include message expiry time in metadata
     sent to the client. Defaults to `false`.
