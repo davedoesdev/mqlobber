@@ -1495,7 +1495,7 @@ describe(type, function ()
         setTimeout(function ()
         {
             expect(console.error.calledOnce).to.equal(true);
-            expect(console.error.calledWith(new Error('buffer too small'))).to.equal(true);
+            expect(console.error.calledWith(sinon.match.instanceOf(Error).and(sinon.match.has('message', 'buffer too small')))).to.equal(true);
             cb();
         }.bind(this), 1000);
 
@@ -1601,7 +1601,7 @@ describe(type, function ()
         setTimeout(function ()
         {
             expect(console.error.calledOnce).to.equal(true);
-            expect(console.error.calledWith(new Error('buffer too small'))).to.equal(true);
+            expect(console.error.calledWith(sinon.match.instanceOf(Error).and(sinon.match.has('message', 'buffer too small')))).to.equal(true);
             cb();
         }.bind(this), 1000);
 
@@ -2009,7 +2009,7 @@ describe(type, function ()
         setTimeout(function ()
         {
             expect(console.error.calledOnce).to.equal(true);
-            expect(console.error.calledWith(new Error('test'))).to.equal(true);
+            expect(console.error.calledWith(sinon.match.instanceOf(Error).and(sinon.match.has('message', 'test')))).to.equal(true);
             cb();
         }.bind(this), 1000);
 
@@ -2109,7 +2109,7 @@ describe(type, function ()
             setTimeout(function ()
             {
                 expect(console.error.calledOnce).to.equal(true);
-                expect(console.error.calledWith(new Error('test'))).to.equal(true);
+                expect(console.error.calledWith(sinon.match.instanceOf(Error).and(sinon.match.has('message', 'test')))).to.equal(true);
                 mqs[0].server.fsq.unsubscribe = orig_unsubscribe;
                 cb();
             }.bind(this), 1000);
