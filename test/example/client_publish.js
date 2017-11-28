@@ -1,4 +1,5 @@
-var MQlobberClient = require('mqlobber').MQlobberClient,
+var mqlobber = require(process.platform === 'win32' ? '../..' : 'mqlobber'),
+    MQlobberClient = mqlobber.MQlobberClient,
     c = require('net').createConnection(parseInt(process.argv[2])),
     mq = new MQlobberClient(c);
 

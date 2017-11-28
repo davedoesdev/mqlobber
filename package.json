@@ -47,7 +47,7 @@
     "chai": "~4.1.2",
     "nyc": "~11.3.0",
     "coveralls": "~3.0.0",
-    "qlobber-fsq": "~10.0.2",
+    "qlobber-fsq": "~10.0.4",
     "async": "~2.6.0",
     "rimraf": "~2.6.2",
     "sinon": "~4.1.2",

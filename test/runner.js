@@ -2911,7 +2911,7 @@ describe(type, function ()
             });
 
             // give time for client to get end
-            setImmediate(done);
+            setTimeout(done, 500);
         }, function (err)
         {
             if (err) { return cb(err); }
