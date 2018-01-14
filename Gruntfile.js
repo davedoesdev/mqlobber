@@ -41,7 +41,8 @@ module.exports = function (grunt)
                      'lib/server_events_doc.js'],
             output: 'README.md',
             fullSourceDescription: true,
-            extraHeadingLevels: 1
+            extraHeadingLevels: 1,
+            doxOptions: { skipSingleStar: true }
         },
 
         bgShell: {

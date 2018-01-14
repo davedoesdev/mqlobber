@@ -631,36 +631,7 @@
 586
 587
 588
-589
-590
-591
-592
-593
-594
-595
-596
-597
-598
-599
-600
-601
-602
-603
-604
-605
-606
-607
-608
-609
-610
-611
-612
-613
-614
-615
-616
-617
-618</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+589</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
@@ -670,20 +641,6 @@
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1103,18 +1060,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">3622x</span>
@@ -1154,9 +1099,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">266x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1294,30 +1236,16 @@ on behalf of a client.
 &nbsp;
 @constructor
 &nbsp;
-@param {QlobberFSQ} fsq File system queue - an instance of
-[`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions).
-This does the heavy-lifting of reading and writing messages to a directory on
-the file system.
+@param {QlobberFSQ} fsq File system queue - an instance of [`QlobberFSQ`](https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions).  This does the heavy-lifting of reading and writing messages to a directory on the file system.
 &nbsp;
-@param {Duplex} stream Connection to the client. The client should use
-[`MQlobberClient`](#mqlobberclientstream-options) on its side of the connection.
-How the connection is made is up to the caller - it just has to supply a
-[`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
+@param {Duplex} stream Connection to the client. The client should use [`MQlobberClient`](#mqlobberclientstream-options) on its side of the connection.  How the connection is made is up to the caller - it just has to supply a [`Duplex`](https://nodejs.org/dist/latest-v4.x/docs/api/stream.html#stream_class_stream_duplex). For example, [`net.Socket`](https://nodejs.org/dist/latest-v4.x/docs/api/net.html#net_class_net_socket) or [`PrimusDuplex`](https://github.com/davedoesdev/primus-backpressure#primusduplexmsg_stream-options).
 &nbsp;
-@param {Object} [options] Configuration options. This is passed down to
-[`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrier-options)
-(which multiplexes message streams over the connection to the
-client). It also supports the following additional properties:
+@param {Object} [options] Configuration options. This is passed down to [`BPMux`](https://github.com/davedoesdev/bpmux#bpmuxcarrier-options) (which multiplexes message streams over the connection to the client). It also supports the following additional properties:
+- `{Boolean} send_expires` Whether to include message expiry time in metadata sent to the client. Defaults to `false`.
 &nbsp;
-  - `{Boolean} send_expires` Whether to include message expiry time in metadata
-    sent to the client. Defaults to `false`.
+- `{Boolean} send_size` Whether to include message size in metadata sent to then client. Defaults to `false`.
 &nbsp;
-  - `{Boolean} send_size` Whether to include message size in metadata sent to
-    then client. Defaults to `false`.
-&nbsp;
-  - `{Boolean} defer_to_final_handler` If `true` then a message stream is only
-    considered finished when all `MQlobberServer` objects finish processing it.
-    Defaults to `false`.
+- `{Boolean} defer_to_final_handler` If `true` then a message stream is only considered finished when all `MQlobberServer` objects finish processing it. Defaults to `false`.
 */
 function MQlobberServer(fsq, stream, options)
 {
@@ -1710,27 +1638,15 @@ Subscribe the connected client to messages.
 Note: If the client is already subscribed to `topic`, this function will do
 nothing (other than call `cb`).
 &nbsp;
-@param {String} topic Which messages the client should receive. Message topics
-are split into words using `.` as the separator. You can use `*` to match
-exactly one word in a topic or `#` to match zero or more words. For example,
-`foo.*` would match `foo.bar` whereas `foo.#` would match `foo`, `foo.bar` and
-`foo.bar.wup`. Note these are the default separator and wildcard characters.
-They can be changed when [constructing the `QlobberFSQ` instance]
-(https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) passed to
-`MQlobberServer`'s [constructor](#mqlobberserverfsq-stream-options).
+@param {String} topic Which messages the client should receive. Message topics are split into words using `.` as the separator. You can use `*` to match exactly one word in a topic or `#` to match zero or more words. For example, `foo.*` would match `foo.bar` whereas `foo.#` would match `foo`, `foo.bar` and `foo.bar.wup`. Note these are the default separator and wildcard characters.  They can be changed when [constructing the `QlobberFSQ` instance] (https://github.com/davedoesdev/qlobber-fsq#qlobberfsqoptions) passed to `MQlobberServer`'s [constructor](#mqlobberserverfsq-stream-options).
 &nbsp;
 @param {Object} [options] Optional settings for this subscription:
+- `{Boolean} subscribe_to_existing` If `true` then the client will be sent any existing, unexpired messages that match `topic`, as well as new ones.  Defaults to `false` (only new messages).
 &nbsp;
-  - `{Boolean} subscribe_to_existing` If `true` then the client will be sent
-    any existing, unexpired messages that match `topic`, as well as new ones.
-    Defaults to `false` (only new messages).
+@param {Function} [cb] Optional function to call once the subscription has been made. This will be passed the following arguments:
+- `{Object} err` If an error occurred then details of the error, otherwise `null`.
 &nbsp;
-@param {Function} [cb] Optional function to call once the subscription has been
-made. This will be passed the following arguments:
-&nbsp;
-  - `{Object} err` If an error occurred then details of the error, otherwise `null`.
-&nbsp;
-  - `{Integer} n` The number of subscriptions made (0 if `topic` was already subscribed to, 1 if not).
+- `{Integer} n` The number of subscriptions made (0 if `topic` was already subscribed to, 1 if not).
 */
 MQlobberServer.prototype.subscribe = function (topic, options, cb)
 {
@@ -1777,15 +1693,12 @@ MQlobberServer.prototype.subscribe = function (topic, options, cb)
 /**
 Unsubscribe the connected client from messages.
 &nbsp;
-@param {String} [topic] Which messages the client should no longer receive.
-If topic is `undefined` then the client will receive no more messages at all.
+@param {String} [topic] Which messages the client should no longer receive.  If topic is `undefined` then the client will receive no more messages at all.
 &nbsp;
-@param {Function} [cb] Optional function to call once the subscription has been
-removed. This will be passed the following arguments:
+@param {Function} [cb] Optional function to call once the subscription has been removed. This will be passed the following arguments:
+- `{Object} err` If an error occurred then details of the error, otherwise `null`'.
 &nbsp;
-  - `{Object} err` If an error occurred then details of the error, otherwise `null`'.
-&nbsp;
-  - `{Integer} n` The number of subscriptions removed.
+- `{Integer} n` The number of subscriptions removed.
 */
 MQlobberServer.prototype.unsubscribe = function (topic, cb)
 {
@@ -1900,7 +1813,7 @@ exports.MQlobberServer = MQlobberServer;
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Tue Nov 28 2017 07:59:34 GMT+0000 (GMT)
+  generated by <a href="https://istanbul.js.org/" target="_blank">istanbul</a> at Sun Jan 14 2018 22:16:03 GMT+0000 (GMT)
 </div>
 </div>
 <script src="../../prettify.js"></script>
