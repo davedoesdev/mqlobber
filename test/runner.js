@@ -2398,8 +2398,9 @@ describe(type, function ()
 
             buf.fill('a');
 
-            function check(msg_stream, info, duplex)
+            function check(msg_stream, info, duplex, num_handlers)
             {
+                info.count = info.count || 0;
                 expect(info.topic).to.equal('foo');
                 expect(msg_stream.fastest_writable === undefined).to.equal(info.count === 0 ? true : false);
                 info.count += 1;
@@ -2415,7 +2416,7 @@ describe(type, function ()
 
                 msg_stream.fastest_writable.add_peer(duplex);
 
-                if (info.count === info.num_handlers)
+                if (info.count === num_handlers)
                 {
                     // make fastest_writable enter waiting state
                     msg_stream.fastest_writable.write(buf);
@@ -2427,7 +2428,7 @@ describe(type, function ()
                 expect(message0_called).to.equal(false);
                 message0_called = true;
                 var duplex = multiplex();
-                check(msg_stream, info, duplex);
+                check(msg_stream, info, duplex, multiplex.num_handlers);
                 duplex.on('laggard', function ()
                 {
                     laggard0_called = true;
@@ -2443,7 +2444,7 @@ describe(type, function ()
                 {
                     laggard1_called = true;
                 });
-                check(msg_stream, info, null_stream);
+                check(msg_stream, info, null_stream, multiplex.num_handlers);
             });
 
             mqs[0].client.subscribe('foo', function (s, info)
@@ -2471,14 +2472,6 @@ describe(type, function ()
                     mqs[0].client.publish('foo').end('bar');
                 });
             });
-        }, it,
-        {
-            filter: function (info, handlers, cb)
-            {
-                info.num_handlers = handlers.size;
-                info.count = 0;
-                cb(null, true, handlers);
-            }
         });
 
         with_mqs(1, 'server should support delaying message until all streams are under high-water mark',
