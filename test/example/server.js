@@ -1,6 +1,6 @@
 var net = require('net'),
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
-    mqlobber = require(process.platform === 'win32' ? '../..' : 'mqlobber'),
+    mqlobber = require('../..'),
     MQlobberServer = mqlobber.MQlobberServer,
     fsq = new QlobberFSQ();
 

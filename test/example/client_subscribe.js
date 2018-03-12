@@ -1,7 +1,7 @@
 /*jshint laxcomma: true */
 //--------------------
 var assert = require('assert'),
-    mqlobber = require(process.platform === 'win32' ? '../..' : 'mqlobber'),
+    mqlobber = require('../..'),
     MQlobberClient = mqlobber.MQlobberClient,
     c = require('net').createConnection(parseInt(process.argv[2])),
     mq = new MQlobberClient(c),
