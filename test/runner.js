@@ -1629,7 +1629,8 @@ describe(type, function ()
         {
             expect(err.message).to.be.oneOf([
                 'unexpected data',
-                'carrier stream finished before duplex finished'
+                'carrier stream finished before duplex finished',
+                'carrier stream ended before end message received'
             ]);
         });
 
