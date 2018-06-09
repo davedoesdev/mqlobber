@@ -13,6 +13,8 @@ function connect_and_accept(cb)
 
     server.once('connection', function (ss)
     {
+        cs.setNoDelay();
+        ss.setNoDelay();
         cb(cs, ss);
     });
 
