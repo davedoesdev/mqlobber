@@ -4,6 +4,8 @@ var cp = require('child_process'),
 
 describe('example', function ()
 {
+    this.timeout(60000);
+
     it('subscribers should connect, receive then disconnect', function (done)
     {
         var count = 0,
