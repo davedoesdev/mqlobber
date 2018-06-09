@@ -1627,7 +1627,10 @@ describe(type, function ()
 
         mqs[0].server.on('warning', function (err)
         {
-            expect(err.message).to.equal('unexpected data');
+            expect(err.message).to.be.oneOf([
+                'unexpected data',
+                'carrier stream finished before duplex finished'
+            ]);
         });
 
         mqs[0].server_stream._write = function (chunk, encoding, callback)
