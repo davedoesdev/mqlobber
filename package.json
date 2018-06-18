@@ -1,7 +1,7 @@
 {
   "name": "mqlobber",
   "description": "Streaming message queue with pub-sub, work queues, wildcards and back-pressure. Just Node and a filesystem required.",
-  "version": "7.0.2",
+  "version": "7.0.3",
   "homepage": "https://github.com/davedoesdev/mqlobber",
   "author": {
     "name": "David Halls",
@@ -47,7 +47,7 @@
     "chai": "~4.1.2",
     "nyc": "~12.0.2",
     "coveralls": "~3.0.1",
-    "qlobber-fsq": "~11.0.3",
+    "qlobber-fsq": "~11.0.4",
     "async": "~2.6.1",
     "rimraf": "~2.6.2",
     "sinon": "~5.1.1",
