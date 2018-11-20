@@ -160,6 +160,15 @@ describe(type, function ()
                     {
                         return cb();
                     }
+
+                    if (type === 'tcp')
+                    {
+                        mq.server.on('error', function (err)
+                        {
+                            expect(err.message).to.equal('This socket has been ended by the other party');
+                        });
+                    }
+
                     mq.client_stream.on('end', cb);
                     mq.server_stream.on('end', function ()
                     {
@@ -1220,13 +1229,18 @@ describe(type, function ()
             expect(err.message).to.be.oneOf(
             [
                 'carrier stream ended before end message received',
-                'carrier stream finished before duplex finished'
+                'carrier stream finished before duplex finished',
+                'This socket has been ended by the other party'
             ]);
         });
 
         mqs[0].server.fsq.on('warning', function (err)
         {
-            expect(err.message).to.equal('carrier stream finished before duplex finished');
+            expect(err.message).to.be.oneOf(
+            [
+                'carrier stream finished before duplex finished',
+                'This socket has been ended by the other party'
+            ]);
         });
 
         function check_end()
