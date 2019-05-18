@@ -3,6 +3,8 @@ language: node_js
 node_js:
   - 10
   - 12
+services:
+  - postgresql
 addons:
   apt:
     sources:
@@ -16,5 +18,8 @@ env:
     - TARGET=test
     - TARGET=travis-coverage
     - TARGET=test USE_QLOBBER_PG=1
+before_script:
+  - psql -c 'create database "qlobber-pg";'
+  - npm explore qlobber-pg -- npm run migrate up
 script:
   - npm run $TARGET

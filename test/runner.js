@@ -11,7 +11,6 @@ var stream = require('stream'),
     MQlobberClient = mqlobber.MQlobberClient,
     MQlobberServer = mqlobber.MQlobberServer,
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
-    QlobberPG = require('qlobber-pg').QlobberPG,
     config = require('config'),
     chai = require('chai'),
     expect = chai.expect,
@@ -93,6 +92,7 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
 
                 if (use_qlobber_pg)
                 {
+                    var QlobberPG = require('qlobber-pg').QlobberPG;
                     fsq = new QlobberPG(Object.assign(
                     {
                         name: 'test'

@@ -1,6 +1,5 @@
 var net = require('net'),
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
-    QlobberPG = require('qlobber-pg').QlobberPG,
     mqlobber = require('../..'),
     MQlobberServer = mqlobber.MQlobberServer,
     config = require('config'),
@@ -8,6 +7,7 @@ var net = require('net'),
     
 if (process.env.USE_QLOBBER_PG)
 {
+    var QlobberPG = require('qlobber-pg').QlobberPG;
     fsq = new QlobberPG(Object.assign(
     {
         name: 'test'

@@ -1,4 +1,8 @@
 environment:
+  NODE_CONFIG: '{"db": {"host": "localhost"}}'
+  PGUSER: postgres
+  PGPASSWORD: Password12!
+  POSTGRES_PATH: C:\Program Files\PostgreSQL\10
   matrix:
     - nodejs_version: "8.16.0"
     - nodejs_version: "8.16.0"
@@ -9,6 +13,9 @@ environment:
     - nodejs_version: "12.2.0"
       USE_QLOBBER_PG: 1
 
+services:
+  - postgresql101
+
 install:
   - ps: Remove-NodeJsInstallation $(Get-InstalledNodeJsVersion).version $(Get-InstalledNodeJsVersion).bitness
   - ps: cmd /c start /wait msiexec /i $(Get-NodeJsInstallPackage $env:nodejs_version x64) /q
@@ -16,7 +23,12 @@ install:
   - npm --version
   - npm install
 
+before_test:
+  - set path=%postgres_path%\\bin;%path%
+  - "psql -c \"create database \\\"qlobber-pg\\\";\""
+
 test_script:
+  - npm explore qlobber-pg -- npm run migrate up
   - npm run test
 
 build: off
