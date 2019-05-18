@@ -11,6 +11,8 @@ var stream = require('stream'),
     MQlobberClient = mqlobber.MQlobberClient,
     MQlobberServer = mqlobber.MQlobberServer,
     QlobberFSQ = require('qlobber-fsq').QlobberFSQ,
+    QlobberPG = require('qlobber-pg').QlobberPG,
+    config = require('config'),
     chai = require('chai'),
     expect = chai.expect,
     sinon = require('sinon'),
@@ -58,9 +60,11 @@ function topic_sort(a, b)
 
 var timeout = 5 * 60;
 
+var use_qlobber_pg = process.env.USE_QLOBBER_PG === '1';
+
 module.exports = function (type, connect_and_accept)
 {
-describe(type, function ()
+describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
 {
     function with_mqs(n, description, f, mqit, options)
     {
@@ -70,22 +74,42 @@ describe(type, function ()
 
             var fsq, mqs, ended = false;
 
-            before(function (cb)
+            if (!use_qlobber_pg)
             {
-                var fsq_dir = path.join(path.dirname(require.resolve('qlobber-fsq')), 'fsq');
-                rimraf(fsq_dir, cb);
-            });
+                before(function (cb)
+                {
+                    var fsq_dir = path.join(path.dirname(require.resolve('qlobber-fsq')), 'fsq');
+                    rimraf(fsq_dir, cb);
+                });
+            }
 
             before(function (cb)
             {
-                fsq = new QlobberFSQ(util._extend(
+                var opts = util._extend(
                 {
                     multi_ttl: timeout * 1000,
                     single_ttl: timeout * 2 * 1000
-                }, options));
+                }, options);
+
+                if (use_qlobber_pg)
+                {
+                    fsq = new QlobberPG(Object.assign(
+                    {
+                        name: 'test'
+                    }, config, opts));
+                }
+                else
+                {
+                    fsq = new QlobberFSQ(opts);
+                }
 
                 fsq.on('start', function ()
                 {
+                    if (use_qlobber_pg) 
+                    {
+                        fsq._queue.push(cb => fsq._client.query('DELETE FROM messages', cb));
+                    }
+
                     async.timesSeries(n, function (i, cb)
                     {
                         connect_and_accept(function (cs, ss)
@@ -138,6 +162,8 @@ describe(type, function ()
                 }
                 ended = true;
 
+                var need_to_unsubscribe = false;
+
                 async.each(mqs, function (mq, cb)
                 {
                     mq.server.removeAllListeners('unsubscribe_all_requested');
@@ -150,7 +176,7 @@ describe(type, function ()
                     {
                         mq.server.on('unsubscribe_all_requested', function ()
                         {
-                            this.unsubscribe();
+                            need_to_unsubscribe = true;
                             this.centro_test_uar = true;
                         });
                     }
@@ -182,10 +208,22 @@ describe(type, function ()
                         expect(mq.server.centro_test_uar).to.equal(true);
                     }
 
-                    fsq.stop_watching(function ()
+                    function stop()
                     {
-                        cb(err);
-                    });
+                        fsq.stop_watching(function ()
+                        {
+                            cb(err);
+                        });
+                    }
+
+                    if (need_to_unsubscribe)
+                    {
+                        mq.server.unsubscribe(stop);
+                    }
+                    else
+                    {
+                        stop();
+                    }
                 });
             }
 
@@ -561,7 +599,7 @@ describe(type, function ()
 
         mqs[0].server.mux.multiplex(
         {
-            handshake_data: new Buffer([2])
+            handshake_data: Buffer.from([2])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -592,7 +630,7 @@ describe(type, function ()
 
         mqs[0].server.mux.multiplex(
         {
-            handshake_data: new Buffer([8])
+            handshake_data: Buffer.from([8])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -641,7 +679,7 @@ describe(type, function ()
 
         mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
         {
-            delay()(new Buffer(0));
+            delay()(Buffer.alloc(0));
         });
 
         mqs[0].client.subscribe('foo', function ()
@@ -694,9 +732,12 @@ describe(type, function ()
             // stop server handshake handler replying
         });
 
-        mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
+        mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
         {
-            delay()(new Buffer(0));
+            mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
+            {
+                delay()(Buffer.alloc(0));
+            });
         });
 
         mqs[0].client.subscribe('foo', function ()
@@ -764,7 +805,7 @@ describe(type, function ()
 
         mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
         {
-            delay()(new Buffer(0));
+            delay()(Buffer.alloc(0));
         });
 
         mqs[0].client.publish('foo', function (err)
@@ -1238,6 +1279,7 @@ describe(type, function ()
         {
             expect(err.message).to.be.oneOf(
             [
+                'carrier stream ended before end message received',
                 'carrier stream finished before duplex finished',
                 'This socket has been ended by the other party'
             ]);
@@ -1278,15 +1320,6 @@ describe(type, function ()
             backoff_called = true;
         });
 
-        mqs[0].client.on('drain', function ()
-        {
-            end(function ()
-            {
-                ended = true;
-                check_end();
-            });
-        });
-
         function sent(complete)
         {
             if (complete)
@@ -1297,27 +1330,38 @@ describe(type, function ()
             {
                 count_incomplete += 1;
             }
-            if ((count_complete + count_incomplete) == 2993)
+            if ((count_complete + count_incomplete) === 2993)
             {
                 expect(count_complete).to.equal(2992);
                 expect(count_incomplete).to.equal(1);
                 expect(backoff_called).to.equal(true);
-                mqs[0].client.subscribe('foo', function () {}, function (err)
-                {
-                    expect(err.message).to.equal('write after end');
-                    count_sub_error += 1;
-                    check_end();
-                });
-                mqs[0].client.subs.set('foo', new Set([function () {}]));
-                mqs[0].client.unsubscribe(function (err)
-                {
-                    expect(err.message).to.equal('write after end');
-                    count_unsub_error += 1;
-                    check_end();
-                });
                 mqs[0].server.subscribe('foo', function (err)
                 {
                     if (err) { return cb(err); }
+
+                    mqs[0].client.on('drain', function ()
+                    {
+                        mqs[0].client.subscribe('foo', function () {}, function (err)
+                        {
+                            expect(err.message).to.equal('write after end');
+                            count_sub_error += 1;
+                            check_end();
+                        });
+                        mqs[0].client.subs.set('foo', new Set([function () {}]));
+                        mqs[0].client.unsubscribe(function (err)
+                        {
+                            expect(err.message).to.equal('write after end');
+                            count_unsub_error += 1;
+                            check_end();
+                        });
+
+                        end(function ()
+                        {
+                            ended = true;
+                            check_end();
+                        });
+                    });
+
                     mqs[0].client_stream._write = orig_write;
                     mqs[0].client_stream._write(the_chunk, the_encoding, the_callback);
                 });
@@ -1553,7 +1597,7 @@ describe(type, function ()
 
         mqs[0].client.mux.multiplex(
         {
-            handshake_data: new Buffer([3])
+            handshake_data: Buffer.from([3])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -1575,7 +1619,7 @@ describe(type, function ()
 
         mqs[0].client.mux.multiplex(
         {
-            handshake_data: new Buffer([3, 2])
+            handshake_data: Buffer.from([3, 2])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -1597,7 +1641,7 @@ describe(type, function ()
 
         mqs[0].client.mux.multiplex(
         {
-            handshake_data: new Buffer([100])
+            handshake_data: Buffer.from([100])
         }).on('error', function (err)
         {
             expect(err.message).to.be.oneOf(
@@ -1676,7 +1720,7 @@ describe(type, function ()
             {
                 count_incomplete += 1;
             }
-            if ((count_complete + count_incomplete) == 3981)
+            if ((count_complete + count_incomplete) === 3981)
             {
                 expect(count_complete).to.equal(3980);
                 expect(count_incomplete).to.equal(1);
@@ -1756,17 +1800,17 @@ describe(type, function ()
                 msg2 = err.message;
             });
 
+            // check stream was ended
+            read_all(data, function (v)
+            {
+                expect(v.toString()).to.equal(use_qlobber_pg ? 'bar' : '');
+                cb();
+            });
+
             done(new Error('dummy'), function ()
             {
                 expect(msg1).to.equal('dummy');
                 expect(msg2).to.equal('dummy');
-
-                // check stream was ended
-                read_all(data, function (v)
-                {
-                    expect(v.toString()).to.equal('');
-                    cb();
-                });
             });
         });
 
@@ -1850,7 +1894,7 @@ describe(type, function ()
 
             read_all(s, function (v)
             {
-                expect(v.toString()).to.equal('');
+                expect(v.toString()).to.equal(use_qlobber_pg ? 'bar': '');
                 done(new Error('dummy'));
             });
         }, function (err)
@@ -1863,7 +1907,7 @@ describe(type, function ()
     with_mqs(1, 'should be able to do client callback after multiplexing',
     function (mqs, cb)
     {
-        var msgs, server_done;
+        var msgs, server_done, data_ended = false;
 
         mqs[0].server.on('warning', function (err)
         {
@@ -1894,6 +1938,11 @@ describe(type, function ()
                 expect(err.message).to.be.oneOf(['ended before handshaken',
                                                  'client error']);
                 msgs.push('data error');
+            });
+
+            data.on('end', function ()
+            {
+                data_ended = true;
             });
 
             server_done = done;
@@ -1928,13 +1977,20 @@ describe(type, function ()
 
             read_all(s, function (v)
             {
-                expect(msgs).to.eql(['client warning',
-                                     'server warning',
-                                     'fsq warning',
-                                     'server warning',
-                                     'server warning',
-                                     'data error',
-                                     'client error']);
+                if (use_qlobber_pg) {
+                    expect(data_ended).to.equal(true);
+                    expect(msgs).to.eql(['client warning',
+                                         'server warning',
+                                         'fsq warning']);
+                } else {
+                    expect(msgs).to.eql(['client warning',
+                                         'server warning',
+                                         'fsq warning',
+                                         'server warning',
+                                         'server warning',
+                                         'data error',
+                                         'client error']);
+                }
 
                 // depending how soon the error gets to the server,
                 // the data may already have been sent
@@ -2412,7 +2468,7 @@ describe(type, function ()
                 message1_called = false,
                 laggard0_called = false,
                 laggard1_called = false,
-                buf = new Buffer(100 * 1024);
+                buf = Buffer.alloc(100 * 1024);
 
             buf.fill('a');
 
@@ -2519,7 +2575,7 @@ describe(type, function ()
                     mqs[0].client.publish('bar', function (err)
                     {
                         if (err) { return cb(err); }
-                    }).end(new Buffer(128 * 1024));
+                    }).end(Buffer.alloc(128 * 1024));
                 });
             });
         }, it,
@@ -2711,7 +2767,7 @@ describe(type, function ()
             mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
-                expect(hdata).to.eql(new Buffer([0]));
+                expect(hdata).to.eql(Buffer.from([0]));
                 cb();
             });
 
@@ -2761,7 +2817,7 @@ describe(type, function ()
             mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
-                expect(hdata).to.eql(new Buffer([1]));
+                expect(hdata).to.eql(Buffer.from([1]));
                 count += 1;
             });
 
@@ -2785,7 +2841,7 @@ describe(type, function ()
             mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
-                expect(hdata).to.eql(new Buffer([0]));
+                expect(hdata).to.eql(Buffer.from([0]));
                 
                 count += 1;
                 if (count === 1)
@@ -2820,7 +2876,7 @@ describe(type, function ()
             mqs[0].server.mux.on('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
-                expect(hdata).to.eql(new Buffer(0));
+                expect(hdata).to.eql(Buffer.alloc(0));
                 
                 count += 1;
                 if (count === 1)
@@ -2866,7 +2922,7 @@ describe(type, function ()
             mqs[0].server.mux.once('handshake', function (duplex, hdata, delay)
             {
                 expect(delay).to.equal(null);
-                expect(hdata).to.eql(new Buffer(0));
+                expect(hdata).to.eql(Buffer.alloc(0));
             });
 
             done();
@@ -3441,7 +3497,7 @@ describe(type, function ()
                         subscribe_to_existing: true
                     }, function (err)
                     {
-                        done(err, err ? undefined : new Buffer([1]));
+                        done(err, err ? undefined : Buffer.from([1]));
                     });
                 });
                 
@@ -3545,7 +3601,14 @@ describe(type, function ()
             s.peer_error_then_end();
             read_all(s, function (v)
             {
-                expect(v.length).to.be.below(100000);
+                if (use_qlobber_pg)
+                {
+                    expect(v.length).to.equal(100000);
+                }
+                else
+                {
+                    expect(v.length).to.be.below(100000);
+                }
                 msg0 = true;
                 check();
             });
@@ -3558,7 +3621,10 @@ describe(type, function ()
                 s.peer_error_then_end();
                 read_all(s, function (v)
                 {
-                    expect(v.length).to.be.below(100000);
+                    if (!use_qlobber_pg)
+                    {
+                        expect(v.length).to.be.below(100000);
+                    }
                     msg1 = true;
                     check();
                 });
@@ -3568,7 +3634,7 @@ describe(type, function ()
                 mqs[0].client.publish('foo', function (err)
                 {
                     if (err) { return cb(err); }
-                }).end(new Buffer(100000));
+                }).end(Buffer.alloc(100000));
             });
         });
     });
@@ -3585,7 +3651,7 @@ describe(type, function ()
             function check()
             {
                 if (peer_errors.server1 ||
-                    peer_errors.fsq ||
+                    peer_errors.fsq == (use_qlobber_pg ? false : true) ||
                     peer_errors.client1 ||
                     peer_errors.duplex1)
                 {
@@ -3624,7 +3690,14 @@ describe(type, function ()
                 s.peer_error_then_end();
                 read_all(s, function (v)
                 {
-                    expect(v.length).to.be.below(100000);
+                    if (use_qlobber_pg)
+                    {
+                        expect(v.length).to.equal(100000);
+                    }
+                    else
+                    {
+                        expect(v.length).to.be.below(100000);
+                    }
                     msg0 = true;
                     check();
                 });
@@ -3646,7 +3719,7 @@ describe(type, function ()
                     mqs[0].client.publish('foo', function (err)
                     {
                         if (err) { return cb(err); }
-                    }).end(new Buffer(100000));
+                    }).end(Buffer.alloc(100000));
                 });
             });
         }, it,
@@ -3731,7 +3804,7 @@ describe(type, function ()
                     mqs[0].client.publish('foo', function (err)
                     {
                         if (err) { return cb(err); }
-                    }).end(new Buffer(100000));
+                    }).end(Buffer.alloc(100000));
                 });
             });
         }, it,
