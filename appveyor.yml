@@ -4,13 +4,13 @@ environment:
   PGPASSWORD: Password12!
   POSTGRES_PATH: C:\Program Files\PostgreSQL\10
   matrix:
+    - nodejs_version: "12.2.0"
+    - nodejs_version: "12.2.0"
+      USE_QLOBBER_PG: 1
+    - nodejs_version: "10.15.3"
+    - nodejs_version: "10.15.3"
+      USE_QLOBBER_PG: 1
     - nodejs_version: "8.16.0"
-    - nodejs_version: "10.15.3"
-    - nodejs_version: "10.15.3"
-      USE_QLOBBER_PG: 1
-    - nodejs_version: "12.2.0"
-    - nodejs_version: "12.2.0"
-      USE_QLOBBER_PG: 1
 
 services:
   - postgresql101
