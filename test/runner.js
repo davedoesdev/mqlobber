@@ -162,7 +162,7 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                 }
                 ended = true;
 
-                var need_to_unsubscribe = false;
+                var need_to_unsubscribe = [];
 
                 async.each(mqs, function (mq, cb)
                 {
@@ -176,7 +176,7 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                     {
                         mq.server.on('unsubscribe_all_requested', function ()
                         {
-                            need_to_unsubscribe = true;
+                            need_to_unsubscribe.push(mq);
                             this.centro_test_uar = true;
                         });
                     }
@@ -208,22 +208,16 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                         expect(mq.server.centro_test_uar).to.equal(true);
                     }
 
-                    function stop()
+                    async.each(need_to_unsubscribe, function (mq, cb)
+                    {
+                        mq.server.unsubscribe(cb);
+                    }, function (err2)
                     {
                         fsq.stop_watching(function ()
                         {
-                            cb(err);
+                            cb(err || err2);
                         });
-                    }
-
-                    if (need_to_unsubscribe)
-                    {
-                        mq.server.unsubscribe(stop);
-                    }
-                    else
-                    {
-                        stop();
-                    }
+                    });
                 });
             }
 
