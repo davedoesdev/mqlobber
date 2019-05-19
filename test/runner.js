@@ -1688,7 +1688,8 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
             expect(err.message).to.be.oneOf([
                 'unexpected data',
                 'carrier stream finished before duplex finished',
-                'carrier stream ended before end message received'
+                'carrier stream ended before end message received',
+                'This socket has been ended by the other party'
             ]);
         });
 
