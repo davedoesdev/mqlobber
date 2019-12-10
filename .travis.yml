@@ -17,7 +17,7 @@ before_install:
   - sudo cp /etc/postgresql/{9.6,12}/main/pg_hba.conf
   - sudo service postgresql restart 12
 before_script:
-  - psql -version
+  - psql --version
   - psql -c 'select version();'
   - psql -c 'create database "qlobber-pg";'
   - npm explore qlobber-pg -- npm run migrate up
