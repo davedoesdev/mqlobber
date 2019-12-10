@@ -1,7 +1,7 @@
 {
   "name": "mqlobber",
   "description": "Streaming message queue with pub-sub, work queues, wildcards and back-pressure. Just Node and a filesystem required.",
-  "version": "8.0.3",
+  "version": "9.0.0",
   "homepage": "https://github.com/davedoesdev/mqlobber",
   "author": {
     "name": "David Halls",
@@ -35,26 +35,26 @@
   ],
   "dependencies": {
     "bpmux": "^7.0.19",
-    "qlobber": "^3.1.0"
+    "qlobber": "^4.0.1"
   },
   "devDependencies": {
-    "async": "^2.6.2",
+    "async": "^3.1.0",
     "chai": "^4.2.0",
-    "coveralls": "^3.0.4",
+    "coveralls": "^3.0.9",
     "fastest-writable": "^2.1.0",
     "grunt": "^1.0.4",
-    "grunt-apidox": "^2.0.5",
+    "grunt-apidox": "^2.0.7",
     "grunt-bg-shell": "^2.3.3",
     "grunt-contrib-jshint": "^2.1.0",
     "grunt-mocha-test": "^0.13.3",
-    "mocha": "^6.1.4",
+    "mocha": "^6.2.2",
     "nyc": "^14.1.1",
-    "qlobber-fsq": "^11.0.10",
-    "qlobber-pg": "^1.1.0",
-    "rimraf": "^2.6.3",
-    "sinon": "^7.3.2"
+    "qlobber-fsq": "^12.0.0",
+    "qlobber-pg": "^2.0.0",
+    "rimraf": "^3.0.0",
+    "sinon": "^7.5.0"
   },
   "engines": {
-    "node": ">= 8"
+    "node": ">= 12"
   }
 }

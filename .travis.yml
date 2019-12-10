@@ -1,24 +1,24 @@
-sudo: false
+dist: bionic
 language: node_js
 node_js:
-  - 10
   - 12
-services:
-  - postgresql
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-6
+  - 13
 env:
   global:
-    - CXX=g++-6
+    - PGUSER=postgres
   matrix:
     - TARGET=test
     - TARGET=travis-coverage
     - TARGET=test USE_QLOBBER_PG=1
+before_install:
+  - sudo apt-get update
+  - sudo apt-get --yes remove postgresql\*
+  - sudo apt-get install -y postgresql-12 postgresql-client-12 socat
+  - sudo cp /etc/postgresql/{9.6,12}/main/pg_hba.conf
+  - sudo service postgresql restart 12
 before_script:
+  - psql -version
+  - psql -c 'select version();'
   - psql -c 'create database "qlobber-pg";'
   - npm explore qlobber-pg -- npm run migrate up
 script:
