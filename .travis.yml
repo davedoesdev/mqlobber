@@ -6,6 +6,8 @@ node_js:
 env:
   global:
     - PGUSER=postgres
+    - PGPORT=5433
+    - NODE_CONFIG='{"db":{"port":5433}}'
   matrix:
     - TARGET=test
     - TARGET=travis-coverage
@@ -14,8 +16,10 @@ before_install:
   - sudo apt-get update
   - sudo apt-get --yes remove postgresql\*
   - sudo apt-get install -y postgresql-12 postgresql-client-12 socat
+  - sudo cat /etc/postgresql/{9.6,12}/main/pg_hba.conf
   - sudo cp /etc/postgresql/{9.6,12}/main/pg_hba.conf
   - sudo service postgresql restart 12
+  - ls -al /var/run/postgresql
 before_script:
   - psql --version
   - psql -c 'select version();'

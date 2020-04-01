@@ -1,6 +1,7 @@
 {
   "db": {
     "host": "/var/run/postgresql",
-    "database": "qlobber-pg"
+    "database": "qlobber-pg",
+    "user": "postgres"
   }
 }
