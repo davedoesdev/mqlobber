@@ -3246,7 +3246,8 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                 expect(cle.message).to.be.oneOf(
                 [
                     'carrier stream ended before end message received',
-                    'carrier stream finished before duplex finished'
+                    'carrier stream finished before duplex finished',
+                    'write after end'
                 ]);
                 cb();
                 return true;
@@ -3273,6 +3274,7 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
 
             info.client.on('error', function (err)
             {
+            console.log(err);
                 this.last_error = err;
             });
 
