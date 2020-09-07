@@ -66,16 +66,16 @@ module.exports = function (grunt)
 
     grunt.loadNpmTasks('grunt-contrib-jshint');
     grunt.loadNpmTasks('grunt-mocha-test');
-    grunt.loadNpmTasks('grunt-bg-shell');
+    grunt.loadNpmTasks('grunt-exec');
     grunt.loadNpmTasks('grunt-apidox');
 
     grunt.registerTask('lint', 'jshint');
     grunt.registerTask('test', 'mochaTest');
     grunt.registerTask('docs', ['apidox']);
-    grunt.registerTask('coverage', ['bgShell:cover',
-                                    'bgShell:cover_report',
-                                    'bgShell:cover_check']);
-    grunt.registerTask('coveralls', 'bgShell:coveralls');
+    grunt.registerTask('coverage', ['exec:cover',
+                                    'exec:cover_report',
+                                    'exec:cover_check']);
+    grunt.registerTask('coveralls', 'exec:coveralls');
     grunt.registerTask('default', ['lint', 'test']);
 };
 
