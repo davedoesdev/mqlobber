@@ -45,28 +45,21 @@ module.exports = function (grunt)
             doxOptions: { skipSingleStar: true }
         },
 
-        bgShell: {
+        exec: {
             cover: {
-                cmd: nyc_path + " -x Gruntfile.js -x \"" + path.join('test', '**') + "\" " + grunt_path + " test",
-                fail: true,
-                execOpts: {
-                    maxBuffer: 0
-                }
+                cmd: nyc_path + " -x Gruntfile.js -x \"" + path.join('test', '**') + "\" " + grunt_path + " test"
             },
 
             cover_report: {
-                cmd: nyc_path + ' report -r lcov',
-                fail: true
+                cmd: nyc_path + ' report -r lcov'
             },
 
             cover_check: {
-                cmd: nyc_path + ' check-coverage --statements 100 --branches 100 --functions 100 --lines 100',
-                fail: true
+                cmd: nyc_path + ' check-coverage --statements 100 --branches 100 --functions 100 --lines 100'
             },
 
             coveralls: {
-                cmd: 'cat coverage/lcov.info | coveralls',
-                fail: true
+                cmd: 'cat coverage/lcov.info | coveralls'
             }
         }
     });
