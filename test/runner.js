@@ -1807,18 +1807,33 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                 msg2 = err.message;
             });
 
-            // check stream was ended
-            read_all(data, function (v)
+            if (use_qlobber_pg)
             {
-                expect(v.toString()).to.equal(use_qlobber_pg ? 'bar' : '');
-                cb();
-            });
+                expect(data.read().toString()).to.equal('bar');
+                expect(data.read()).to.equal(null);
 
-            done(new Error('dummy'), function ()
+                done(new Error('dummy'), function ()
+                {
+                    expect(msg1).to.equal('dummy');
+                    expect(msg2).to.equal('dummy');
+                    cb();
+                });
+            }
+            else
             {
-                expect(msg1).to.equal('dummy');
-                expect(msg2).to.equal('dummy');
-            });
+                // check stream was ended
+                read_all(data, function (v)
+                {
+                    expect(v.toString()).to.equal('');
+                    cb();
+                });
+
+                done(new Error('dummy'), function ()
+                {
+                    expect(msg1).to.equal('dummy');
+                    expect(msg2).to.equal('dummy');
+                });
+            }
         });
 
         mqs[0].client.subscribe('foo', function ()
