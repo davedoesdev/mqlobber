@@ -8,7 +8,7 @@ var common = require('./runner'),
 
 function RightDuplex(left)
 {
-    Duplex.call(this);
+    Duplex.call(this, { autoDestroy: false });
     this.left = left;
 }
 
@@ -44,7 +44,7 @@ RightDuplex.prototype._write = function (chunk, encoding, cb)
 
 function LeftDuplex()
 {
-    Duplex.call(this);
+    Duplex.call(this, { autoDestroy: false });
     this.right = new RightDuplex(this);
 }
 

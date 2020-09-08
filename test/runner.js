@@ -191,9 +191,18 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                     {
                         mq.server.on('error', function (err)
                         {
-                            expect(err.message).to.equal('This socket has been ended by the other party');
+                            expect(err.message).to.be.oneOf([
+                                'This socket has been ended by the other party',
+                                'write EPIPE'
+                            ]);
                         });
                     }
+
+                    mq.client_stream.on('error', function ()
+                    {
+                        // In the tests we keep going on error
+                        this._readableState.errorEmitted = false;
+                    });
 
                     mq.client_stream.on('end', cb);
                     mq.server_stream.on('end', function ()
@@ -1174,6 +1183,7 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
         mqs[0].client.on('removed', function ()
         {
             removed += 1;
+            check();
         });
 
         mqs[0].client.subscribe('foo', function (s, info)
@@ -1265,7 +1275,8 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
             [
                 'carrier stream ended before end message received',
                 'carrier stream finished before duplex finished',
-                'This socket has been ended by the other party'
+                'This socket has been ended by the other party',
+                'write EPIPE'
             ]);
         });
 
@@ -1275,7 +1286,8 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
             [
                 'carrier stream ended before end message received',
                 'carrier stream finished before duplex finished',
-                'This socket has been ended by the other party'
+                'This socket has been ended by the other party',
+                'write EPIPE'
             ]);
         });
 
@@ -3341,6 +3353,13 @@ describe(type + ', use_qlobber_pg=' + use_qlobber_pg, function ()
                     cb();
                 }
             }
+
+            cs.on('error', function (err)
+            {
+                expect(err.message).to.equal('write after end');
+                // In the test we keep going on error
+                this._readableState.errorEmitted = false;
+            });
 
             cs.on('end', function ()
             {
