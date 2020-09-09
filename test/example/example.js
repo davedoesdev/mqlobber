@@ -1,6 +1,49 @@
-var cp = require('child_process'),
+var assert = require('assert'),
+    cp = require('child_process'),
     path = require('path'),
     async = require('async');
+
+function read_all(s, cb)
+{
+    var bufs = [];
+
+    s.on('end', function ()
+    {
+        if (cb)
+        {
+            cb(Buffer.concat(bufs));
+        }
+    });
+
+    s.on('readable', function ()
+    {
+        while (true)
+        {
+            var data = this.read();
+            if (data === null) { break; }
+            bufs.push(data);
+        }
+    });
+}
+
+function drain(p, cb)
+{
+    var stdout, stderr;
+
+    read_all(p.stdout, function (v)
+    {
+        stdout = v;
+    });
+    read_all(p.stderr, function (v)
+    {
+        stderr = v;
+    });
+
+    p.on('close', function (code)
+    {
+        cb(code, stdout, stderr);
+    });
+}
 
 describe('example', function ()
 {
@@ -14,7 +57,16 @@ describe('example', function ()
 
         async.times(2, function (n, next)
         {
-            cp.fork(path.join(__dirname, 'server.js'), [base_port + n]).on('message', function (m)
+            var p = cp.fork(path.join(__dirname, 'server.js'), [base_port + n], { silent: true });
+
+            drain(p, function (code, stdout, stderr)
+            {
+                assert.equal(code, 0);
+                assert.equal(stdout.length, 0);
+                assert.equal(stderr.length, 0);
+            });
+
+            p.on('message', function (m)
             {
                 var exits = 0;
                 function exit()
@@ -42,7 +94,7 @@ describe('example', function ()
                         {
                             for (var server of servers)
                             {
-                                server.on('exit', exit);
+                                server.on('close', exit);
                                 server.send('stop');
                             }
                         }
@@ -53,9 +105,27 @@ describe('example', function ()
         {
             servers = svrs;
 
-            cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port, 'foo.bar']).on('message', function ()
+            var p = cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port, 'foo.bar'], { silent: true });
+
+            drain(p, function (code, stdout, stderr)
             {
-                cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port + 1, 'foo.*']).on('message', function ()
+                assert.equal(code, 0);
+                assert.equal(stdout.toString(), 'received foo.bar hello\n');
+                assert.equal(stderr.length, 0);
+            });
+
+            p.on('message', function ()
+            {
+                p = cp.fork(path.join(__dirname, 'client_subscribe.js'), [base_port + 1, 'foo.*'], { silent: true});
+
+                drain(p, function (code, stdout, stderr)
+                {
+                    assert.equal(code, 0);
+                    assert.equal(stdout.toString(), 'received foo.bar hello\n');
+                    assert.equal(stderr.length, 0);
+                });
+
+                p.on('message', function ()
                 {
                     cp.fork(path.join(__dirname, 'client_publish.js'), [base_port, 'foo.bar']);
                 });

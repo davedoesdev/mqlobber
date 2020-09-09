@@ -1,8 +1,7 @@
 /*jshint laxcomma: true */
 //--------------------
 var assert = require('assert'),
-    mqlobber = require('../..'),
-    MQlobberClient = mqlobber.MQlobberClient,
+    MQlobberClient = require('../..').MQlobberClient,
     c = require('net').createConnection(parseInt(process.argv[2])),
     mq = new MQlobberClient(c),
     topic = process.argv[3];
@@ -18,16 +17,20 @@ mq.subscribe(topic, function (s, info)
             msg += data.toString();
         }
     });
+    s.on('finish', function ()
+    {
+        c.end();
+    });
     s.on('end', function ()
     {
         console.log('received', info.topic, msg);
         assert.equal(msg, 'hello');
-        c.end();
     });
 }
 //--------------------
-, function ()
+, function (err)
 {
+    assert.ifError(err);
     if (process.send)
     {
         process.send('subscribed');
