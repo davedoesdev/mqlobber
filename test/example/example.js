@@ -61,9 +61,21 @@ describe('example', function ()
 
             drain(p, function (code, stdout, stderr)
             {
+                var s, pos1, pos2, pos3;
                 assert.equal(code, 0);
                 assert.equal(stdout.length, 0);
-                assert.equal(stderr.length, 0);
+                if (process.env.USE_QLOBBER_PG === '1')
+                {
+                    s = stderr.toString();
+                    pos1 = s.indexOf('Error: stopped');
+                    pos2 = s.indexOf('Error: Connection terminated');
+                    pos3 = s.indexOf('Error: Client was closed and is not queryable');
+                    assert((stderr.length === 0) || (pos1 === 0) || (pos2 === 0) || (pos3 === 0));
+                }
+                else
+                {
+                    assert.equal(stderr.length, 0);
+                }
             });
 
             p.on('message', function (m)
